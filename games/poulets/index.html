@@ -44,8 +44,18 @@
     display:flex;align-items:center;gap:10px;position:relative;box-shadow:0 4px 0 var(--line)}
   .fighter.me{margin-top:8px}
   .fighter.opp{margin-top:8px}
-  .chick{font-size:3.4rem;line-height:1;transition:transform .2s}
+  .chick{font-size:3.4rem;line-height:1;position:relative}
   .opp .chick{transform:scaleX(-1)}
+  .chick .body{display:inline-block;animation:idle 1.8s ease-in-out infinite;transform-origin:50% 90%}
+  .opp .chick .body{animation-delay:-.9s}
+  @keyframes idle{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-3px) rotate(-3deg)}75%{transform:translateY(-1px) rotate(3deg)}}
+  .chick .body.ko{animation:none;transform:rotate(90deg) translateX(10px);filter:saturate(.7)}
+  .chick .body.champ{animation:champ .7s ease-in-out infinite}
+  @keyframes champ{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-14px) scale(1.12) rotate(-6deg)}}
+  .fx{position:fixed;transform:translate(-50%,-50%);pointer-events:none;z-index:60;line-height:1;will-change:transform,opacity}
+  .fx.txt{font-weight:900;font-family:inherit;-webkit-text-stroke:2px #3a2410;paint-order:stroke fill;white-space:nowrap}
+  .stage-flash{animation:sflash .35s}
+  @keyframes sflash{0%{background:#fff8}100%{background:transparent}}
   .stats{flex:1;min-width:0}
   .name{font-weight:bold;font-size:1.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hearts{font-size:1.15rem;letter-spacing:1px}
@@ -55,12 +65,6 @@
     border:2px solid var(--line);background:#fff}
   .tag.ready{background:var(--ok);color:#fff}
   .tag.off{background:#ccc}
-  .shake{animation:shake .5s}
-  @keyframes shake{20%{transform:translateX(-10px) rotate(-8deg)}40%{transform:translateX(10px) rotate(8deg)}
-    60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
-  .opp .chick.shake{animation:shakeo .5s}
-  @keyframes shakeo{0%,100%{transform:scaleX(-1)}20%{transform:scaleX(-1) translateX(-10px) rotate(-8deg)}
-    40%{transform:scaleX(-1) translateX(10px) rotate(8deg)}60%{transform:scaleX(-1) translateX(-6px)}}
   .hit{animation:hit .6s}
   @keyframes hit{30%{background:#ffb4a8}}
 
@@ -149,7 +153,7 @@
     </header>
 
     <div class="fighter opp" id="f-opp">
-      <div class="chick">🐓</div>
+      <div class="chick"><span class="body">🐓</span></div>
       <div class="stats">
         <div class="name" id="n-opp">…</div>
         <div class="hearts" id="h-opp"></div>
@@ -162,7 +166,7 @@
     <div id="stage"></div>
 
     <div class="fighter me" id="f-me">
-      <div class="chick">🐔</div>
+      <div class="chick"><span class="body">🐔</span></div>
       <div class="stats">
         <div class="name" id="n-me">…</div>
         <div class="hearts" id="h-me"></div>
@@ -275,16 +279,17 @@ function onState(st){
   render();
 }
 
-function hearts(n){ return '❤️'.repeat(n) + '🤍'.repeat(Math.max(0, MAX_HP - n)); }
+function hearts(n, broken=0){ return '❤️'.repeat(n) + '💔'.repeat(broken) + '🤍'.repeat(Math.max(0, MAX_HP - n - broken)); }
 function seeds(n){ let s=''; for(let i=0;i<MAX_SEEDS;i++) s += i<n ? '🌽' : '<span class="off">🌽</span>'; return s; }
 
-function renderFighters(st, hpOverride, seedsOverride){
+function renderFighters(st, hpOverride, seedsOverride, broken){
   const me = st.you, opp = 1 - me;
-  const hp = hpOverride || st.hp, sd = seedsOverride || st.seeds;
+  const hp = hpOverride || st.hp, sd = seedsOverride || st.seeds, bk = broken || [0,0];
+  if(st.winner===null) resetBodies();
   $('n-me').textContent = st.names[me] + ' (toi)';
   $('n-opp').textContent = st.names[opp];
-  $('h-me').textContent = hearts(hp[me]);
-  $('h-opp').textContent = hearts(hp[opp]);
+  $('h-me').textContent = hearts(hp[me], bk[me]);
+  $('h-opp').textContent = hearts(hp[opp], bk[opp]);
   $('g-me').innerHTML = seeds(sd[me]);
   $('g-opp').innerHTML = seeds(sd[opp]);
   $('score').textContent = st.score[me] + ' – ' + st.score[opp];
@@ -363,6 +368,125 @@ function narrate(r, names){
   return lines;
 }
 
+// ---------- Animations ----------
+const cardOf = (slot) => $(slot === S.you ? 'f-me' : 'f-opp');
+const bodyOf = (slot) => cardOf(slot).querySelector('.body');
+const chickOf = (slot) => cardOf(slot).querySelector('.chick');
+const rnd = (a, b) => a + Math.random() * (b - a);
+const wait = (ms) => new Promise(r => setTimeout(r, ms));
+function anim(el, frames, opts){ return el.animate(frames, Object.assign({duration:400, easing:'ease-out'}, opts)); }
+function center(el){ const r = el.getBoundingClientRect(); return {x: r.left + r.width/2, y: r.top + r.height/2}; }
+function spawn(txt, x, y, size, cls){
+  const d = document.createElement('div'); d.className = 'fx' + (cls ? ' ' + cls : '');
+  d.textContent = txt; d.style.left = x + 'px'; d.style.top = y + 'px'; d.style.fontSize = (size || 2) + 'rem';
+  document.body.appendChild(d); return d;
+}
+// explosion de petits emojis autour d'un élément
+function burst(el, emoji, n, dist, size){
+  const c = center(el);
+  for(let i = 0; i < n; i++){
+    const d = spawn(emoji, c.x, c.y, size || 1.2);
+    const a = rnd(0, Math.PI * 2), r = dist * rnd(.6, 1.2);
+    anim(d, [
+      {transform:'translate(-50%,-50%) scale(.3) rotate(0)', opacity:1},
+      {transform:`translate(calc(-50% + ${Math.cos(a)*r}px), calc(-50% + ${Math.sin(a)*r}px)) scale(1) rotate(${rnd(-180,180)}deg)`, opacity:0}
+    ], {duration:rnd(650, 950), easing:'cubic-bezier(.2,.8,.3,1)'}).onfinish = () => d.remove();
+  }
+}
+// projectile d'un poulet vers l'autre
+function fly(emoji, fromEl, toEl, dur, size, spin){
+  const a = center(fromEl), b = center(toEl);
+  const d = spawn(emoji, a.x, a.y, size || 2);
+  return new Promise(res => {
+    anim(d, [
+      {transform:'translate(-50%,-50%) scale(.5) rotate(0)'},
+      {transform:`translate(calc(-50% + ${(b.x-a.x)/2}px), calc(-50% + ${(b.y-a.y)/2}px)) scale(1.3) rotate(${(spin||0)/2}deg)`, offset:.5},
+      {transform:`translate(calc(-50% + ${b.x-a.x}px), calc(-50% + ${b.y-a.y}px)) scale(1) rotate(${spin||0}deg)`}
+    ], {duration:dur, easing:'ease-in'}).onfinish = () => { d.remove(); res(); };
+  });
+}
+// texte qui saute ("-2 ❤️", "BLOQUÉ !")
+function popText(el, txt, color, size){
+  const c = center(el);
+  const d = spawn(txt, c.x + rnd(-10, 30), c.y - 10, size || 1.8, 'txt');
+  d.style.color = color;
+  anim(d, [
+    {transform:'translate(-50%,-50%) scale(.3)', opacity:0},
+    {transform:'translate(-50%,-90%) scale(1.35)', opacity:1, offset:.2},
+    {transform:'translate(-50%,-110%) scale(1)', opacity:1, offset:.6},
+    {transform:'translate(-50%,-200%) scale(.9)', opacity:0}
+  ], {duration:1300, easing:'ease-out'}).onfinish = () => d.remove();
+}
+function shake(slot, strong){
+  const k = strong ? 16 : 10;
+  anim(bodyOf(slot), [
+    {transform:'none'}, {transform:`translateX(-${k}px) rotate(-12deg)`}, {transform:`translateX(${k}px) rotate(10deg)`},
+    {transform:`translateX(-${k/2}px) rotate(-5deg)`}, {transform:`translateX(${k/2}px)`}, {transform:'none'}
+  ], {duration:500});
+  const card = cardOf(slot);
+  anim(card, [{background:'#ffb4a8'}, {background:'var(--card)'}], {duration:600});
+}
+
+// Animation de l'action d'un joueur. "dir" = vers l'adversaire (-1 vers le haut pour moi, +1 vers le bas pour lui)
+function actAnim(slot, action, r){
+  const body = bodyOf(slot), chick = chickOf(slot), card = cardOf(slot), other = chickOf(1 - slot);
+  const dir = slot === S.you ? -1 : 1;
+  if(action === 'picorer'){
+    anim(body, [
+      {transform:'none'}, {transform:'rotate(40deg) translateY(8px)'}, {transform:'none'},
+      {transform:'rotate(40deg) translateY(8px)'}, {transform:'none'}
+    ], {duration:650, easing:'ease-in-out'});
+    setTimeout(() => burst(chick, '🌽', 4, 45, 1), 150);
+    setTimeout(() => popText(card.querySelector('.seeds'), '+1 🌽', '#3bb273', 1.2), 350);
+  }
+  else if(action === 'bec'){
+    anim(body, [
+      {transform:'none'},
+      {transform:`translateY(${-dir*12}px) scale(.85)`, offset:.3},
+      {transform:`translateY(${dir*75}px) scale(1.2)`, offset:.55},
+      {transform:'none'}
+    ], {duration:650, easing:'ease-in-out'});
+    setTimeout(() => burst(other, '💢', 1, 10, 1.6), 330);
+  }
+  else if(action === 'mega'){
+    anim(body, [
+      {transform:'none'},
+      {transform:'rotate(360deg) scale(1.25)', offset:.4},
+      {transform:`translateY(${dir*85}px) rotate(720deg) scale(1.35)`, offset:.7},
+      {transform:'none'}
+    ], {duration:850, easing:'ease-in-out'});
+    setTimeout(() => fly('🌪️', chick, other, 420, 2.6, 900).then(() => burst(other, '🪶', 8, 70, 1.3)), 250);
+    setTimeout(() => anim(document.body, [{transform:'translate(0,0)'},{transform:'translate(-6px,4px)'},{transform:'translate(5px,-4px)'},{transform:'translate(0,0)'}], {duration:250}), 680);
+  }
+  else if(action === 'plumes'){
+    anim(body, [
+      {transform:'scale(1)'}, {transform:'scale(1.5)', offset:.25}, {transform:'scale(1.35)', offset:.8}, {transform:'scale(1)'}
+    ], {duration:900, easing:'ease-out'});
+    burst(chick, '🪶', 6, 55, 1.2);
+    if(r.blocked[slot]) setTimeout(() => popText(card, 'BLOQUÉ !', '#4c8dff', 1.6), 330);
+  }
+  else if(action === 'oeuf'){
+    const c = center(chick);
+    const egg = spawn('🥚', c.x + (slot === S.you ? 50 : -50), c.y + 10, 1.8);
+    anim(egg, [
+      {transform:'translate(-50%,-150%) scale(.3)', opacity:0},
+      {transform:'translate(-50%,-50%) scale(1)', opacity:1, offset:.3},
+      {transform:'translate(-50%,-50%) rotate(-15deg)', offset:.5},
+      {transform:'translate(-50%,-50%) rotate(15deg)', offset:.7},
+      {transform:'translate(-50%,-50%) rotate(0)'}
+    ], {duration:600, fill:'forwards'});
+    if(r.reflected[slot]){
+      setTimeout(() => {
+        egg.remove();
+        burst(chick, '💥', 1, 5, 2.4);
+        fly('💥', chick, other, 300, 2.4, 0).then(() => { burst(other, '💥', 5, 50, 1.6); burst(other, '🍳', 1, 20, 2); });
+      }, 380);
+    } else {
+      setTimeout(() => { anim(egg, [{opacity:1}, {opacity:0, transform:'translate(-50%,-50%) scale(.6)'}], {duration:400}).onfinish = () => egg.remove(); }, 900);
+    }
+  }
+}
+
 function playReveal(prev, st){
   animating = true;
   const me = st.you, opp = 1 - me, r = st.lastResult;
@@ -372,37 +496,64 @@ function playReveal(prev, st){
   hide('t-opp');
   document.querySelectorAll('.act').forEach(b => b.disabled = true);
 
+  // 1. Révélation des deux cartes
   $('stage').innerHTML = `<div class="clash"><span class="pop">${ACTIONS[r.actions[me]].ico}</span><span class="vs">VS</span><span class="pop" style="animation-delay:.25s;opacity:0;animation-fill-mode:forwards">${ACTIONS[r.actions[opp]].ico}</span></div><div class="narr" id="narr"></div>`;
-  if(navigator.vibrate) navigator.vibrate([20,60,20]);
+  WG.vibrate([20,60,20]);
 
+  // 2. Les poulets agissent
+  setTimeout(() => {
+    $('stage').classList.remove('stage-flash'); void $('stage').offsetWidth; $('stage').classList.add('stage-flash');
+    actAnim(me, r.actions[me], r);
+    actAnim(opp, r.actions[opp], r);
+  }, 650);
+
+  // 3. Impacts : dégâts, cœurs brisés, récit
   setTimeout(() => {
     $('narr').innerHTML = narrate(r, st.names).map(l => `<div>${l}</div>`).join('');
-    if(r.dmg[me] > 0) hitFx('f-me', r.dmg[me] >= 2);
-    if(r.dmg[opp] > 0) hitFx('f-opp', false);
-    renderFighters(st);
-  }, 800);
+    [me, opp].forEach(i => {
+      if(r.dmg[i] > 0){
+        shake(i, r.dmg[i] >= 2);
+        popText(cardOf(i), `-${r.dmg[i]} ❤️`, '#e2462f', r.dmg[i] >= 2 ? 2.2 : 1.8);
+        if(i === me) WG.vibrate(r.dmg[i] >= 2 ? [80,40,80] : 80);
+      }
+    });
+    renderFighters(st, null, null, [0,1].map(i => Math.min(r.dmg[i], oldHp[i])));
+  }, 1150);
 
+  // 4. Retour au calme
   setTimeout(() => {
     animating = false;
     if(pending){ S = pending; pending = null; }
     render();
-  }, 2000);
+  }, 2500);
 }
 
-function hitFx(id, strong){
-  const f = $(id), c = f.querySelector('.chick');
-  c.classList.remove('shake'); f.classList.remove('hit'); void f.offsetWidth;
-  c.classList.add('shake'); f.classList.add('hit');
-  if(id==='f-me' && navigator.vibrate) navigator.vibrate(strong ? [80,40,80] : 80);
+// K.O. : le perdant tombe et finit en pilon, le gagnant saute de joie
+function koFx(st){
+  const losers = st.winner === 'draw' ? [0, 1] : [1 - st.winner];
+  losers.forEach(i => {
+    const b = bodyOf(i);
+    b.classList.add('ko');
+    burst(chickOf(i), '🪶', 10, 70, 1.3);
+    setTimeout(() => { b.textContent = st.winner === 'draw' ? '🍳' : '🍗'; b.classList.remove('ko'); burst(chickOf(i), '💨', 3, 30, 1.4); }, 600);
+  });
+  if(st.winner !== 'draw') bodyOf(st.winner).classList.add('champ');
+}
+function resetBodies(){
+  ['f-me','f-opp'].forEach(id => {
+    const b = $(id).querySelector('.body');
+    b.classList.remove('ko','champ');
+    b.textContent = id === 'f-me' ? '🐔' : '🐓';
+  });
 }
 
 // ---------- Fin de partie ----------
 function showOver(st){
   const me = st.you, opp = 1 - me;
-  if(!$('over').classList.contains('hidden') && $('over').dataset.round == st.round){
-    updateRematch(st); return;
-  }
-  $('over').dataset.round = st.round;
+  const key = st.gameNo + ':' + st.round; // une seule animation de fin par partie
+  if($('over').dataset.key === key){ updateRematch(st); return; }
+  $('over').dataset.key = key;
+  koFx(st);
   setTimeout(() => {
     if(st.winner==='draw'){ $('over-emoji').textContent='🍳'; $('over-title').textContent='Égalité !'; $('over-text').textContent='Deux poulets K.O. en même temps. Omelette pour tout le monde.'; }
     else if(st.winner===me){ $('over-emoji').textContent='🏆'; $('over-title').textContent='Victoire !'; $('over-text').textContent=`${st.names[opp]} finit en nuggets. Tu es le roi de la basse-cour.`; confetti(); }
@@ -410,7 +561,7 @@ function showOver(st){
     $('rematchBtn').disabled = !!st.rematch[me];
     updateRematch(st);
     show('over');
-  }, 400);
+  }, 1600);
 }
 function updateRematch(st){
   const me = st.you, opp = 1 - me;
