@@ -296,6 +296,8 @@ $('go').onclick = () => {
 $('cancel').onclick = () => { WG.leave(); showLobby(); };
 $('quit').onclick = () => { if(confirm('Quitter la partie ?')){ WG.leave(); showLobby(); } };
 $('share').onclick = () => WG.share($('share'), 'Duel de Poulets 🐔');
+$('rulesBtn').onclick = () => show('rules');
+$('rematchBtn').onclick = () => { sendMsg({type:'rematch'}); $('rematchBtn').disabled = true; };
 
 function showScreen(id){ ['s-lobby','s-wait','s-game'].forEach(s => s===id ? show(s) : hide(s)); }
 
