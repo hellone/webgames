@@ -1,0 +1,31 @@
+# WebGames - déploiement sur le VPS, derrière le Traefik de n8n (HTTPS automatique).
+# Adresse : https://courtside-basket.fr/jeux/  (même domaine que Courtside, sous-chemin /jeux)
+# Lancement / mise à jour : bash deploy.sh
+services:
+  web:
+    build: .
+    container_name: webgames
+    restart: unless-stopped
+    mem_limit: 256m
+    networks:
+      - n8n_default
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=n8n_default
+      - traefik.http.routers.webgames.rule=Host(`${WEBGAMES_DOMAIN:-courtside-basket.fr}`) && PathPrefix(`/jeux`)
+      - traefik.http.routers.webgames.priority=100   # passe avant le routeur de Courtside
+      - traefik.http.routers.webgames.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.webgames.tls=true
+      - traefik.http.routers.webgames.tls.certresolver=${TRAEFIK_CERTRESOLVER:-mytlschallenge}
+      - traefik.http.routers.webgames.middlewares=webgames-slash,webgames-strip
+      # /jeux -> /jeux/ (les liens de l'appli sont relatifs)
+      - traefik.http.middlewares.webgames-slash.redirectregex.regex=^(https?://[^/]+/jeux)$$
+      - traefik.http.middlewares.webgames-slash.redirectregex.replacement=$${1}/
+      - traefik.http.middlewares.webgames-slash.redirectregex.permanent=true
+      # l'appli reçoit les chemins sans /jeux
+      - traefik.http.middlewares.webgames-strip.stripprefix.prefixes=/jeux
+      - traefik.http.services.webgames.loadbalancer.server.port=3000
+
+networks:
+  n8n_default:
+    external: true

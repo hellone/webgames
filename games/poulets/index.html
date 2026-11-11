@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#ffcf4a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Duel de Poulets</title>
+<style>
+  :root{
+    --bg:#fff4d6; --ink:#3a2410; --card:#fffaf0; --accent:#ff7a1a; --accent2:#e2462f;
+    --ok:#3bb273; --muted:#a58a6a; --line:#3a2410;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:"Trebuchet MS","Comic Sans MS",system-ui,sans-serif;overscroll-behavior:none}
+  body{background:
+    radial-gradient(circle at 20% 10%,#ffe7a3 0 12%,transparent 13%),
+    radial-gradient(circle at 85% 30%,#ffe7a3 0 8%,transparent 9%),
+    repeating-linear-gradient(45deg,#fff4d6 0 18px,#ffefc7 18px 36px)}
+  #app{max-width:480px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;
+    padding:calc(env(safe-area-inset-top) + 8px) 12px calc(env(safe-area-inset-bottom) + 8px)}
+  .hidden{display:none!important}
+  h1{font-size:2.2rem;margin:.4em 0 .1em;text-align:center;letter-spacing:.5px}
+  h2{text-align:center;margin:.6em 0}
+  .screen{flex:1;display:flex;flex-direction:column}
+  .center{justify-content:center;align-items:stretch;gap:14px;text-align:center}
+  .bigchick{font-size:6rem;text-align:center;animation:bob 1.4s ease-in-out infinite}
+  @keyframes bob{50%{transform:translateY(-8px) rotate(-4deg)}}
+  input{font:inherit;font-size:1.2rem;padding:14px;border:3px solid var(--line);border-radius:14px;
+    background:#fff;text-align:center;width:100%}
+  button{font:inherit;cursor:pointer;border:3px solid var(--line);border-radius:14px;background:#fff;color:var(--ink)}
+  button.big{font-size:1.25rem;font-weight:bold;padding:14px;background:var(--accent);color:#fff;
+    box-shadow:0 5px 0 var(--line);transition:transform .08s,box-shadow .08s}
+  button.big:active{transform:translateY(4px);box-shadow:0 1px 0 var(--line)}
+  .link{background:#fff;border:3px dashed var(--line);border-radius:12px;padding:12px;word-break:break-all;font-size:.95rem}
+  .small{font-size:.85rem;color:var(--muted)}
+
+  /* ----- Jeu ----- */
+  header{display:flex;justify-content:space-between;align-items:center;font-weight:bold}
+  header button{padding:6px 10px;font-weight:bold}
+  .score{font-size:.9rem;background:#fff;border:2px solid var(--line);border-radius:10px;padding:4px 8px}
+  .fighter{background:var(--card);border:3px solid var(--line);border-radius:18px;padding:8px 12px;
+    display:flex;align-items:center;gap:10px;position:relative;box-shadow:0 4px 0 var(--line)}
+  .fighter.me{margin-top:8px}
+  .fighter.opp{margin-top:8px}
+  .chick{font-size:3.4rem;line-height:1;transition:transform .2s}
+  .opp .chick{transform:scaleX(-1)}
+  .stats{flex:1;min-width:0}
+  .name{font-weight:bold;font-size:1.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hearts{font-size:1.15rem;letter-spacing:1px}
+  .seeds{font-size:1rem;letter-spacing:1px}
+  .seeds .off{opacity:.18;filter:grayscale(1)}
+  .tag{position:absolute;right:10px;top:8px;font-size:.8rem;font-weight:bold;padding:3px 8px;border-radius:99px;
+    border:2px solid var(--line);background:#fff}
+  .tag.ready{background:var(--ok);color:#fff}
+  .tag.off{background:#ccc}
+  .shake{animation:shake .5s}
+  @keyframes shake{20%{transform:translateX(-10px) rotate(-8deg)}40%{transform:translateX(10px) rotate(8deg)}
+    60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+  .opp .chick.shake{animation:shakeo .5s}
+  @keyframes shakeo{0%,100%{transform:scaleX(-1)}20%{transform:scaleX(-1) translateX(-10px) rotate(-8deg)}
+    40%{transform:scaleX(-1) translateX(10px) rotate(8deg)}60%{transform:scaleX(-1) translateX(-6px)}}
+  .hit{animation:hit .6s}
+  @keyframes hit{30%{background:#ffb4a8}}
+
+  #stage{flex:1;min-height:150px;display:flex;flex-direction:column;justify-content:center;align-items:center;
+    text-align:center;padding:10px 4px;position:relative}
+  .clash{display:flex;gap:26px;align-items:center;font-size:3.6rem}
+  .clash .vs{font-size:1.4rem;font-weight:bold;color:var(--accent2)}
+  .pop{animation:pop .45s cubic-bezier(.2,1.6,.4,1)}
+  @keyframes pop{0%{transform:scale(0);opacity:0}100%{transform:scale(1);opacity:1}}
+  .narr{font-size:1.05rem;font-weight:bold;margin-top:8px;line-height:1.35}
+  .narr div{margin:4px 0}
+  .dmg{color:var(--accent2)}
+  .hint{color:var(--muted);font-size:1rem}
+  .thinking{font-size:2.2rem;animation:bob 1s infinite}
+
+  #actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .act{padding:9px 8px;text-align:left;display:flex;gap:8px;align-items:center;background:#fff;
+    box-shadow:0 4px 0 var(--line);transition:transform .08s,box-shadow .08s,opacity .2s}
+  .act:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--line)}
+  .act .ico{font-size:1.9rem}
+  .act b{display:block;font-size:.98rem}
+  .act span{display:block;font-size:.72rem;color:var(--muted);line-height:1.2}
+  .act:disabled{opacity:.35;box-shadow:0 2px 0 var(--line)}
+  .act.sel{background:#ffd27a;outline:3px solid var(--accent);outline-offset:1px}
+  .act.wide{grid-column:span 2}
+
+  #taunts{display:flex;justify-content:center;gap:8px;margin-top:10px}
+  #taunts button{font-size:1.4rem;padding:4px 10px;border-radius:99px;border-width:2px}
+  .floaty{position:fixed;font-size:3rem;pointer-events:none;animation:floaty 1.8s ease-out forwards;z-index:50}
+  @keyframes floaty{0%{transform:translateY(0) scale(.4);opacity:0}15%{opacity:1;transform:translateY(-20px) scale(1.3)}
+    100%{transform:translateY(-220px) scale(1);opacity:0}}
+
+  .overlay{position:fixed;inset:0;background:rgba(58,36,16,.55);display:flex;align-items:center;justify-content:center;
+    padding:20px;z-index:40}
+  .modal{background:var(--card);border:3px solid var(--line);border-radius:20px;padding:18px;max-width:420px;width:100%;
+    box-shadow:0 6px 0 var(--line);max-height:88vh;overflow:auto}
+  .modal h2{margin-top:0}
+  .rules li{margin:6px 0;line-height:1.35}
+  .rules table{width:100%;border-collapse:collapse;font-size:.88rem;margin:8px 0}
+  .rules td{border-bottom:1px dashed var(--muted);padding:5px 3px;vertical-align:top}
+  .result-emoji{font-size:5rem;text-align:center}
+  .confetti{position:fixed;top:-20px;font-size:1.6rem;animation:fall linear forwards;z-index:45;pointer-events:none}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+  .banner{background:#ffe0d6;border:2px solid var(--accent2);border-radius:10px;padding:6px;text-align:center;
+    font-size:.9rem;margin-top:6px}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Nom -->
+  <section id="s-name" class="screen center">
+    <div class="bigchick">🐔</div>
+    <h1>Duel de Poulets</h1>
+    <p class="small">Bluff, graines et coups de bec.</p>
+    <input id="name" maxlength="14" placeholder="Ton nom de poulet" autocomplete="off">
+    <button id="go" class="big">Entrer dans l'arène</button>
+  </section>
+
+  <!-- Attente -->
+  <section id="s-wait" class="screen center hidden">
+    <div class="bigchick">🥚</div>
+    <h2>En attente de ton adversaire…</h2>
+    <p>Envoie-lui ce lien :</p>
+    <div id="link" class="link"></div>
+    <button id="share" class="big">Partager le lien</button>
+    <p class="small">La partie démarre dès qu'il ou elle ouvre le lien.</p>
+    <button onclick="WG.home()" style="padding:12px;font-weight:bold">🏠 Retour aux jeux</button>
+  </section>
+
+  <!-- Erreur -->
+  <section id="s-error" class="screen center hidden">
+    <div class="bigchick">🙅‍♂️</div>
+    <h2 id="errmsg">Oups</h2>
+    <button class="big" onclick="newRoom()">Créer une nouvelle arène</button>
+    <button onclick="WG.home()" style="padding:12px;font-weight:bold">🏠 Retour aux jeux</button>
+  </section>
+
+  <!-- Jeu -->
+  <section id="s-game" class="screen hidden">
+    <header>
+      <button onclick="WG.home()" aria-label="Accueil">🏠</button>
+      <span id="round">Round 1</span>
+      <span class="score" id="score">0 – 0</span>
+      <button id="rulesBtn">? Règles</button>
+    </header>
+
+    <div class="fighter opp" id="f-opp">
+      <div class="chick">🐓</div>
+      <div class="stats">
+        <div class="name" id="n-opp">…</div>
+        <div class="hearts" id="h-opp"></div>
+        <div class="seeds" id="g-opp"></div>
+      </div>
+      <div class="tag hidden" id="t-opp"></div>
+    </div>
+    <div id="disc" class="banner hidden">📴 Ton adversaire s'est déconnecté… on l'attend.</div>
+
+    <div id="stage"></div>
+
+    <div class="fighter me" id="f-me">
+      <div class="chick">🐔</div>
+      <div class="stats">
+        <div class="name" id="n-me">…</div>
+        <div class="hearts" id="h-me"></div>
+        <div class="seeds" id="g-me"></div>
+      </div>
+    </div>
+
+    <div id="actions"></div>
+    <div id="taunts"></div>
+  </section>
+</div>
+
+<!-- Fin de partie -->
+<div id="over" class="overlay hidden">
+  <div class="modal" style="text-align:center">
+    <div class="result-emoji" id="over-emoji">🏆</div>
+    <h2 id="over-title">Victoire !</h2>
+    <p id="over-text"></p>
+    <button class="big" id="rematchBtn" style="width:100%">Revanche !</button>
+    <p class="small" id="rematchInfo"></p>
+  </div>
+</div>
+
+<!-- Règles -->
+<div id="rules" class="overlay hidden">
+  <div class="modal rules">
+    <h2>🐔 Règles du duel</h2>
+    <ul>
+      <li>Chaque poulet a <b>5 ❤️</b> et commence avec <b>1 🌽</b> (max 5).</li>
+      <li>Chaque round, vous choisissez <b>en secret</b> une action. Révélation simultanée !</li>
+      <li>Le premier à 0 ❤️ perd. Si les deux tombent en même temps : égalité.</li>
+    </ul>
+    <table>
+      <tr><td>🌽 <b>Picorer</b></td><td>+1 graine. Mais tu es sans défense.</td></tr>
+      <tr><td>🐤 <b>Coup de bec</b></td><td>1 🌽 → 1 dégât.</td></tr>
+      <tr><td>🪶 <b>Plumes gonflées</b></td><td>Gratuit. Bloque le Coup de bec. Pas 2 rounds de suite.</td></tr>
+      <tr><td>🥚 <b>Œuf piégé</b></td><td>2 🌽. Si on t'attaque, tu ne prends rien et l'attaquant prend 2 dégâts. Sinon… tu as juste pondu.</td></tr>
+      <tr><td>🌪️ <b>Méga-bec</b></td><td>3 🌽 → 2 dégâts, <b>perce les plumes</b>. Mais l'œuf piégé le renvoie aussi !</td></tr>
+    </table>
+    <p class="small">Astuce : picorer rapporte, mais c'est le moment préféré de l'adversaire pour attaquer. Tout est dans le bluff.</p>
+    <button class="big" style="width:100%" onclick="hide('rules')">Compris !</button>
+  </div>
+</div>
+
+<script src="../common/client.js"></script>
+<script>
+const ACTIONS = {
+  picorer:{ico:'🌽',name:'Picorer',desc:'+1 graine',cost:0},
+  bec:{ico:'🐤',name:'Coup de bec',desc:'1 🌽 · 1 dégât',cost:1},
+  plumes:{ico:'🪶',name:'Plumes gonflées',desc:'Bloque le bec · pas 2× de suite',cost:0},
+  oeuf:{ico:'🥚',name:'Œuf piégé',desc:'2 🌽 · renvoie 2 dégâts',cost:2},
+  mega:{ico:'🌪️',name:'Méga-bec',desc:'3 🌽 · 2 dégâts, perce les plumes',cost:3},
+};
+const ORDER = ['picorer','bec','plumes','oeuf','mega'];
+const TAUNTS = ['😂','😤','🥚','🐔','💩','😘'];
+const MAX_HP = 5, MAX_SEEDS = 5;
+const $ = id => document.getElementById(id);
+const show = id => $(id).classList.remove('hidden');
+const hide = id => $(id).classList.add('hidden');
+
+// ---------- Connexion (brique commune /common/client.js) ----------
+let S=null, seenRound=0, animating=false, pending=null, firstState=true;
+const sendMsg = WG.send;
+const esc = WG.esc;
+function newRoom(){ WG.newRoom(); }
+
+function start(){
+  WG.connect({
+    game: 'poulets',
+    onState,
+    onTaunt: e => floaty(e, true),
+    onError: msg => { $('errmsg').textContent = msg; showScreen('s-error'); },
+  });
+  showScreen('s-wait');
+}
+
+$('name').value = WG.name();
+$('go').onclick = () => { WG.setName($('name').value.trim() || 'Poulet'); start(); };
+$('name').addEventListener('keydown', e => { if(e.key==='Enter') $('go').click(); });
+$('link').textContent = WG.link();
+$('share').onclick = () => WG.share($('share'), 'Duel de Poulets 🐔');
+$('rulesBtn').onclick = () => show('rules');
+$('rematchBtn').onclick = () => { sendMsg({type:'rematch'}); $('rematchBtn').disabled = true; };
+
+function showScreen(id){ ['s-name','s-wait','s-game','s-error'].forEach(s => s===id ? show(s) : hide(s)); }
+
+// ---------- État ----------
+function onState(st){
+  const opp = 1 - st.you;
+  if(!st.names[opp]){ S = st; showScreen('s-wait'); return; }
+  showScreen('s-game');
+
+  const res = st.lastResult;
+  if(firstState){ firstState=false; seenRound = res ? res.round : 0; }
+  if(res && res.round > seenRound){
+    seenRound = res.round;
+    const prev = S;
+    S = st;
+    playReveal(prev, st);
+    return;
+  }
+  if(animating){ pending = st; return; }
+  S = st;
+  render();
+}
+
+function hearts(n){ return '❤️'.repeat(n) + '🤍'.repeat(Math.max(0, MAX_HP - n)); }
+function seeds(n){ let s=''; for(let i=0;i<MAX_SEEDS;i++) s += i<n ? '🌽' : '<span class="off">🌽</span>'; return s; }
+
+function renderFighters(st, hpOverride, seedsOverride){
+  const me = st.you, opp = 1 - me;
+  const hp = hpOverride || st.hp, sd = seedsOverride || st.seeds;
+  $('n-me').textContent = st.names[me] + ' (toi)';
+  $('n-opp').textContent = st.names[opp];
+  $('h-me').textContent = hearts(hp[me]);
+  $('h-opp').textContent = hearts(hp[opp]);
+  $('g-me').innerHTML = seeds(sd[me]);
+  $('g-opp').innerHTML = seeds(sd[opp]);
+  $('score').textContent = st.score[me] + ' – ' + st.score[opp];
+}
+
+function render(){
+  const st = S, me = st.you, opp = 1 - me;
+  renderFighters(st);
+  $('round').textContent = 'Round ' + st.round;
+
+  const tag = $('t-opp');
+  if(!st.connected[opp]){ tag.textContent='📴'; tag.className='tag off'; }
+  else if(st.oppReady && st.winner===null){ tag.textContent='A choisi ✓'; tag.className='tag ready'; }
+  else if(st.winner===null){ tag.textContent='Réfléchit…'; tag.className='tag'; }
+  else tag.className='tag hidden';
+  st.connected[opp] ? hide('disc') : show('disc');
+
+  // Stage
+  if(st.winner===null){
+    if(st.myChoice){
+      $('stage').innerHTML = `<div class="thinking">${ACTIONS[st.myChoice].ico}</div>
+        <div class="hint">${st.oppReady ? 'Révélation…' : `En attente de ${esc(st.names[opp])}…<br><span class="small">Tu peux encore changer d'avis.</span>`}</div>`;
+    } else if(!st.lastResult){
+      $('stage').innerHTML = `<div class="hint">Choisis ton action en secret 🤫</div>`;
+    }
+  }
+
+  // Actions
+  const box = $('actions'); box.innerHTML = '';
+  ORDER.forEach((k,idx) => {
+    const a = ACTIONS[k];
+    const b = document.createElement('button');
+    b.className = 'act' + (idx===4 ? ' wide' : '') + (st.myChoice===k ? ' sel' : '');
+    b.innerHTML = `<div class="ico">${a.ico}</div><div><b>${a.name}</b><span>${a.desc}</span></div>`;
+    let ok = st.winner===null && a.cost <= st.seeds[me] && st.connected[opp];
+    if(k==='plumes' && st.lastAction[me]==='plumes'){ ok=false; b.querySelector('span').textContent='Repos des plumes ce round'; }
+    b.disabled = !ok;
+    b.onclick = () => { sendMsg({type:'choose',action:k}); if(navigator.vibrate) navigator.vibrate(15); };
+    box.appendChild(b);
+  });
+
+  // Fin
+  if(st.winner!==null) showOver(st); else { hide('over'); $('rematchBtn').disabled=false; }
+}
+
+
+// ---------- Révélation ----------
+function narrate(r, names){
+  const A = r.actions, N = names.map(esc), lines = [];
+  const atk = a => a==='bec' || a==='mega';
+  if(atk(A[0]) && atk(A[1])){
+    lines.push(A[0]==='mega' && A[1]==='mega' ? '🌪️🌪️ DOUBLE MÉGA-BEC ! Il pleut des plumes.'
+      : `⚔️ Choc de becs ! ${N[0]} et ${N[1]} se pincent mutuellement.`);
+  } else {
+    for(let j=0;j<2;j++){
+      const i = 1-j;
+      if(!atk(A[j])) continue;
+      const mega = A[j]==='mega';
+      if(A[i]==='oeuf') lines.push(`💥 BOUM ! L'œuf piégé de ${N[i]} explose au bec de ${N[j]} !`);
+      else if(A[i]==='plumes' && !mega) lines.push(`🪶 ${N[i]} gonfle ses plumes, le bec de ${N[j]} rebondit lamentablement.`);
+      else if(A[i]==='plumes' && mega) lines.push(`🌪️ MÉGA-BEC ! Les plumes de ${N[i]} volent dans toute la basse-cour.`);
+      else if(A[i]==='picorer') lines.push(mega ? `🌪️ ${N[j]} lâche un MÉGA-BEC sur ${N[i]} en plein goûter !` : `🍗 ${N[j]} pince ${N[i]} en pleine dégustation. Malpoli.`);
+    }
+    if(!atk(A[0]) && !atk(A[1])){
+      if(A[0]==='picorer' && A[1]==='picorer') lines.push('🌽 Pause goûter : tout le monde picore. Ambiance suspecte.');
+      else if(A[0]==='oeuf' && A[1]==='oeuf') lines.push('🥚🥚 Deux œufs piégés face à face… et personne n\'attaque. Bravo les génies.');
+      else for(let i=0;i<2;i++){
+        if(A[i]==='oeuf') lines.push(`🥚 ${N[i]} a pondu un œuf piégé pour rien. Joli œuf quand même.`);
+        else if(A[i]==='plumes') lines.push(`🎈 ${N[i]} se gonfle comme un ballon… pour personne.`);
+        else if(A[i]==='picorer') lines.push(`🌽 ${N[i]} picore tranquillou.`);
+      }
+    }
+  }
+  r.dmg.forEach((d,i) => { if(d>0) lines.push(`<span class="dmg">${N[i]} perd ${d} ❤️</span>`); });
+  if(r.dmg[0]===0 && r.dmg[1]===0 && lines.length<2) lines.push('<span class="small">Aucun dégât ce round.</span>');
+  return lines;
+}
+
+function playReveal(prev, st){
+  animating = true;
+  const me = st.you, opp = 1 - me, r = st.lastResult;
+  const oldHp = prev && prev.hp ? prev.hp : st.hp.map((h,i)=>h + r.dmg[i]);
+  const oldSeeds = prev && prev.seeds ? prev.seeds : st.seeds;
+  renderFighters(st, oldHp, oldSeeds);
+  hide('t-opp');
+  document.querySelectorAll('.act').forEach(b => b.disabled = true);
+
+  $('stage').innerHTML = `<div class="clash"><span class="pop">${ACTIONS[r.actions[me]].ico}</span><span class="vs">VS</span><span class="pop" style="animation-delay:.25s;opacity:0;animation-fill-mode:forwards">${ACTIONS[r.actions[opp]].ico}</span></div><div class="narr" id="narr"></div>`;
+  if(navigator.vibrate) navigator.vibrate([20,60,20]);
+
+  setTimeout(() => {
+    $('narr').innerHTML = narrate(r, st.names).map(l => `<div>${l}</div>`).join('');
+    if(r.dmg[me] > 0) hitFx('f-me', r.dmg[me] >= 2);
+    if(r.dmg[opp] > 0) hitFx('f-opp', false);
+    renderFighters(st);
+  }, 800);
+
+  setTimeout(() => {
+    animating = false;
+    if(pending){ S = pending; pending = null; }
+    render();
+  }, 2000);
+}
+
+function hitFx(id, strong){
+  const f = $(id), c = f.querySelector('.chick');
+  c.classList.remove('shake'); f.classList.remove('hit'); void f.offsetWidth;
+  c.classList.add('shake'); f.classList.add('hit');
+  if(id==='f-me' && navigator.vibrate) navigator.vibrate(strong ? [80,40,80] : 80);
+}
+
+// ---------- Fin de partie ----------
+function showOver(st){
+  const me = st.you, opp = 1 - me;
+  if(!$('over').classList.contains('hidden') && $('over').dataset.round == st.round){
+    updateRematch(st); return;
+  }
+  $('over').dataset.round = st.round;
+  setTimeout(() => {
+    if(st.winner==='draw'){ $('over-emoji').textContent='🍳'; $('over-title').textContent='Égalité !'; $('over-text').textContent='Deux poulets K.O. en même temps. Omelette pour tout le monde.'; }
+    else if(st.winner===me){ $('over-emoji').textContent='🏆'; $('over-title').textContent='Victoire !'; $('over-text').textContent=`${st.names[opp]} finit en nuggets. Tu es le roi de la basse-cour.`; confetti(); }
+    else { $('over-emoji').textContent='🍗'; $('over-title').textContent='Défaite…'; $('over-text').textContent=`${st.names[opp]} t'a plumé. Revanche ?`; }
+    $('rematchBtn').disabled = !!st.rematch[me];
+    updateRematch(st);
+    show('over');
+  }, 400);
+}
+function updateRematch(st){
+  const me = st.you, opp = 1 - me;
+  $('rematchInfo').textContent = st.rematch[me] ? `En attente de ${st.names[opp]}…` : (st.rematch[opp] ? `${st.names[opp]} veut sa revanche !` : '');
+  $('rematchBtn').disabled = !!st.rematch[me];
+}
+function confetti(){
+  const e = ['🌽','🪶','🎉','🐔','⭐'];
+  for(let i=0;i<30;i++){
+    const d = document.createElement('div'); d.className='confetti';
+    d.textContent = e[i % e.length];
+    d.style.left = Math.random()*100 + 'vw';
+    d.style.animationDuration = (1.8 + Math.random()*1.8) + 's';
+    d.style.animationDelay = Math.random()*0.6 + 's';
+    document.body.appendChild(d); setTimeout(() => d.remove(), 4500);
+  }
+}
+
+// ---------- Provocations ----------
+let lastTaunt = 0;
+TAUNTS.forEach(e => {
+  const b = document.createElement('button'); b.textContent = e;
+  b.onclick = () => { const t = Date.now(); if(t - lastTaunt < 800) return; lastTaunt = t; sendMsg({type:'taunt', e}); floaty(e, false); };
+  $('taunts').appendChild(b);
+});
+function floaty(e, fromOpp){
+  const anchor = $(fromOpp ? 'f-opp' : 'f-me').getBoundingClientRect();
+  const d = document.createElement('div'); d.className='floaty'; d.textContent = e;
+  d.style.left = (anchor.left + 30 + Math.random()*(anchor.width - 90)) + 'px';
+  d.style.top = (fromOpp ? anchor.bottom + 120 : anchor.top) + 'px';
+  document.body.appendChild(d); setTimeout(() => d.remove(), 1900);
+}
+
+// Auto-connexion si le nom est déjà connu
+if(WG.name()) start();
+</script>
+</body>
+</html>

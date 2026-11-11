@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2b1d4e">
+<title>Mini-Jeux à deux</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;min-height:100%;font-family:"Trebuchet MS",system-ui,sans-serif;color:#fff;
+    background-color:#2b1d4e;
+    background-image:radial-gradient(circle at 15% 0%,#5b3fa8 0,transparent 45%),
+               radial-gradient(circle at 100% 60%,#c2416b55 0,transparent 40%)}
+  body{background-attachment:fixed}
+  main{max-width:520px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 24px) 16px calc(env(safe-area-inset-bottom) + 24px)}
+  h1{font-size:2.3rem;margin:0;text-align:center;line-height:1.1}
+  h1 span{display:block;font-size:3.2rem;margin-bottom:6px;animation:wob 2.4s ease-in-out infinite}
+  @keyframes wob{50%{transform:rotate(-8deg) scale(1.08)}}
+  .sub{text-align:center;opacity:.75;margin:10px 0 26px}
+  .who{display:flex;gap:8px;margin-bottom:22px}
+  .who input{flex:1;font:inherit;font-size:1.05rem;padding:12px 14px;border-radius:14px;border:2px solid #ffffff33;
+    background:#ffffff14;color:#fff;outline:none}
+  .who input::placeholder{color:#ffffff88}
+  .who input:focus{border-color:#ffd166}
+  .grid{display:grid;gap:14px}
+  .card{display:flex;gap:14px;align-items:center;text-decoration:none;color:#2b1d4e;background:#fff;border-radius:20px;
+    padding:16px;box-shadow:0 6px 0 var(--c,#ff7a1a);border:3px solid var(--c,#ff7a1a);transition:transform .1s,box-shadow .1s}
+  .card:active{transform:translateY(5px);box-shadow:0 1px 0 var(--c,#ff7a1a)}
+  .card .ico{font-size:3rem;width:64px;height:64px;display:flex;align-items:center;justify-content:center;
+    background:color-mix(in srgb,var(--c,#ff7a1a) 18%,#fff);border-radius:16px;flex-shrink:0}
+  .card h2{margin:0 0 4px;font-size:1.25rem}
+  .card p{margin:0;font-size:.9rem;opacity:.75;line-height:1.3}
+  .card .pl{font-size:.75rem;font-weight:bold;margin-top:6px;color:var(--c,#ff7a1a)}
+  .soon{border:3px dashed #ffffff44;border-radius:20px;padding:18px;text-align:center;opacity:.6}
+  footer{text-align:center;opacity:.45;font-size:.8rem;margin-top:30px}
+</style>
+</head>
+<body>
+<main>
+  <h1><span>🎲</span>Mini-Jeux à deux</h1>
+  <p class="sub">Choisis un jeu, envoie le lien, et que le meilleur gagne.</p>
+
+  <div class="who">
+    <input id="name" maxlength="14" placeholder="Ton pseudo" autocomplete="off">
+  </div>
+
+  <div class="grid" id="games"></div>
+  <footer>Chaque partie a son propre lien secret 🔒</footer>
+</main>
+<script>
+  const nameInput = document.getElementById('name');
+  try { nameInput.value = localStorage.getItem('wg_name') || ''; } catch (e) {}
+  nameInput.addEventListener('input', () => { try { localStorage.setItem('wg_name', nameInput.value.trim().slice(0, 14)); } catch (e) {} });
+
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  fetch('api/games').then(r => r.json()).then(list => {
+    const box = document.getElementById('games');
+    box.innerHTML = list.map(g => `
+      <a class="card" href="${encodeURIComponent(g.id)}/" style="--c:${esc(g.color || '#ff7a1a')}">
+        <div class="ico">${esc(g.emoji || '🎮')}</div>
+        <div>
+          <h2>${esc(g.name)}</h2>
+          <p>${esc(g.description || '')}</p>
+          <div class="pl">👥 ${g.players} joueurs</div>
+        </div>
+      </a>`).join('') + `<div class="soon">🚧 D'autres jeux arrivent…</div>`;
+  });
+</script>
+</body>
+</html>
