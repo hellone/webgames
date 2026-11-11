@@ -12,8 +12,9 @@ const START_SEEDS = 1;
 const COST = { picorer: 0, bec: 1, plumes: 0, oeuf: 2, mega: 3 };
 const ACTIONS = Object.keys(COST);
 
-function newGame(score = [0, 0]) {
+function newGame(score = [0, 0], gameNo = 1) {
   return {
+    gameNo, // change à chaque revanche : le téléphone repart de zéro
     hp: [MAX_HP, MAX_HP],
     seeds: [START_SEEDS, START_SEEDS],
     lastAction: [null, null],
@@ -92,7 +93,7 @@ module.exports = {
     if (msg.type === 'rematch') {
       if (g.winner === null) return false;
       g.rematch[slot] = true;
-      if (g.rematch[0] && g.rematch[1]) Object.assign(g, newGame(g.score));
+      if (g.rematch[0] && g.rematch[1]) Object.assign(g, newGame(g.score, g.gameNo + 1));
       return true;
     }
     return false;
@@ -100,6 +101,7 @@ module.exports = {
 
   view(g, i) {
     return {
+      gameNo: g.gameNo,
       hp: g.hp,
       seeds: g.seeds,
       round: g.round,

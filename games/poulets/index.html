@@ -224,7 +224,7 @@ const show = id => $(id).classList.remove('hidden');
 const hide = id => $(id).classList.add('hidden');
 
 // ---------- Connexion (brique commune /common/client.js) ----------
-let S=null, seenRound=0, animating=false, pending=null, firstState=true;
+let S=null, seenRound=0, curGame=null, animating=false, pending=null, firstState=true;
 const sendMsg = WG.send;
 const esc = WG.esc;
 function newRoom(){ WG.newRoom(); }
@@ -256,7 +256,13 @@ function onState(st){
   showScreen('s-game');
 
   const res = st.lastResult;
-  if(firstState){ firstState=false; seenRound = res ? res.round : 0; }
+  if(firstState){ firstState=false; curGame = st.gameNo; seenRound = res ? res.round : 0; }
+  if(st.gameNo !== curGame){
+    // Nouvelle partie (revanche) : on repart de zéro
+    curGame = st.gameNo; seenRound = 0; pending = null;
+    if(animating){ animating = false; }
+    $('stage').innerHTML = '';
+  }
   if(res && res.round > seenRound){
     seenRound = res.round;
     const prev = S;
@@ -301,7 +307,7 @@ function render(){
     if(st.myChoice){
       $('stage').innerHTML = `<div class="thinking">${ACTIONS[st.myChoice].ico}</div>
         <div class="hint">${st.oppReady ? 'Révélation…' : `En attente de ${esc(st.names[opp])}…<br><span class="small">Tu peux encore changer d'avis.</span>`}</div>`;
-    } else if(!st.lastResult){
+    } else if(!st.lastResult || !$('stage').innerHTML.trim() || $('stage').querySelector('.thinking')){
       $('stage').innerHTML = `<div class="hint">Choisis ton action en secret 🤫</div>`;
     }
   }
