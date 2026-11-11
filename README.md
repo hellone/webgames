@@ -3,6 +3,11 @@
 Un site avec plusieurs mini-jeux à 2 joueurs, chacun sur son téléphone.
 Un seul process Node sert tout : l'accueil, les pages des jeux et le temps réel (WebSocket).
 
+## Jouer
+
+Sur un jeu, l'un choisit **Créer** et saisit un code à 4 chiffres (ou 🎲 pour un code au hasard),
+l'autre choisit **Rejoindre** et tape le même code. Recharger la page reprend la partie en cours.
+
 ## Lancer
 
     npm install
@@ -30,7 +35,8 @@ module.exports = {
 ```
 
 2. Crée `games/monjeu/index.html` qui charge `../common/client.js` et appelle
-   `WG.connect({ game: 'monjeu', onState, onTaunt, onError })`, puis `WG.send({...})`.
+   `WG.connect({ game: 'monjeu', room: '4821', mode: 'create' | 'join', onState, onTaunt, onError })`,
+   puis `WG.send({...})`, et `WG.leave()` pour quitter. Modèle de menu Créer / Rejoindre : `games/poulets/`.
 3. Redémarre le serveur : le jeu apparaît sur l'accueil.
 
 Le serveur ajoute toujours `you` (ton numéro de joueur), `names` et `connected` à l'état envoyé.

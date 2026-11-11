@@ -33,6 +33,16 @@
   button.big{font-size:1.25rem;font-weight:bold;padding:14px;background:var(--accent);color:#fff;
     box-shadow:0 5px 0 var(--line);transition:transform .08s,box-shadow .08s}
   button.big:active{transform:translateY(4px);box-shadow:0 1px 0 var(--line)}
+  .tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .tab{padding:12px;font-weight:bold;font-size:1.05rem;box-shadow:0 4px 0 var(--line)}
+  .tab.on{background:var(--accent);color:#fff}
+  .coderow{display:flex;gap:8px}
+  #code{font-size:2.3rem;font-weight:900;letter-spacing:.45em;padding:10px 0 10px .45em}
+  #dice{font-size:1.9rem;padding:0 14px;box-shadow:0 4px 0 var(--line)}
+  .err{background:#ffe0d6;border:2px solid var(--accent2);border-radius:12px;padding:10px;font-weight:bold}
+  .ghost{padding:12px;font-weight:bold;font-size:1rem}
+  .bigcode{font-size:3.8rem;font-weight:900;letter-spacing:.25em;background:#fff;border:3px dashed var(--line);
+    border-radius:18px;padding:10px 0 10px .25em}
   .link{background:#fff;border:3px dashed var(--line);border-radius:12px;padding:12px;word-break:break-all;font-size:.95rem}
   .small{font-size:.85rem;color:var(--muted)}
 
@@ -115,38 +125,41 @@
 <body>
 <div id="app">
 
-  <!-- Nom -->
-  <section id="s-name" class="screen center">
+  <!-- Menu : créer ou rejoindre -->
+  <section id="s-lobby" class="screen center">
     <div class="bigchick">🐔</div>
     <h1>Duel de Poulets</h1>
     <p class="small">Bluff, graines et coups de bec.</p>
     <input id="name" maxlength="14" placeholder="Ton nom de poulet" autocomplete="off">
-    <button id="go" class="big">Entrer dans l'arène</button>
+    <div class="tabs">
+      <button id="tab-create" class="tab on">⚔️ Créer</button>
+      <button id="tab-join" class="tab">🔑 Rejoindre</button>
+    </div>
+    <p class="small" id="code-help">Choisis un code à 4 chiffres et donne-le à ton adversaire.</p>
+    <div class="coderow">
+      <input id="code" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="····" autocomplete="off">
+      <button id="dice" aria-label="Code au hasard">🎲</button>
+    </div>
+    <div id="lobby-err" class="err hidden"></div>
+    <button id="go" class="big">Créer la partie</button>
+    <button class="ghost" onclick="WG.home()">🏠 Retour aux jeux</button>
   </section>
 
-  <!-- Attente -->
+  <!-- Attente de l'adversaire -->
   <section id="s-wait" class="screen center hidden">
     <div class="bigchick">🥚</div>
     <h2>En attente de ton adversaire…</h2>
-    <p>Envoie-lui ce lien :</p>
-    <div id="link" class="link"></div>
-    <button id="share" class="big">Partager le lien</button>
-    <p class="small">La partie démarre dès qu'il ou elle ouvre le lien.</p>
-    <button onclick="WG.home()" style="padding:12px;font-weight:bold">🏠 Retour aux jeux</button>
-  </section>
-
-  <!-- Erreur -->
-  <section id="s-error" class="screen center hidden">
-    <div class="bigchick">🙅‍♂️</div>
-    <h2 id="errmsg">Oups</h2>
-    <button class="big" onclick="newRoom()">Créer une nouvelle arène</button>
-    <button onclick="WG.home()" style="padding:12px;font-weight:bold">🏠 Retour aux jeux</button>
+    <p>Donne-lui ce code :</p>
+    <div id="bigcode" class="bigcode">····</div>
+    <p class="small">Il ou elle choisit « Rejoindre » et tape ce code.</p>
+    <button id="share" class="ghost">🔗 Ou envoyer un lien direct</button>
+    <button id="cancel" class="ghost">✖ Annuler</button>
   </section>
 
   <!-- Jeu -->
   <section id="s-game" class="screen hidden">
     <header>
-      <button onclick="WG.home()" aria-label="Accueil">🏠</button>
+      <button id="quit" aria-label="Quitter">🏠</button>
       <span id="round">Round 1</span>
       <span class="score" id="score">0 – 0</span>
       <button id="rulesBtn">? Règles</button>
@@ -231,32 +244,66 @@ const hide = id => $(id).classList.add('hidden');
 let S=null, seenRound=0, curGame=null, animating=false, pending=null, firstState=true;
 const sendMsg = WG.send;
 const esc = WG.esc;
-function newRoom(){ WG.newRoom(); }
+let mode = 'create';
 
-function start(){
+function setMode(m){
+  mode = m;
+  $('tab-create').classList.toggle('on', m === 'create');
+  $('tab-join').classList.toggle('on', m === 'join');
+  $('go').textContent = m === 'create' ? 'Créer la partie' : 'Rejoindre le combat';
+  $('code-help').textContent = m === 'create'
+    ? 'Choisis un code à 4 chiffres et donne-le à ton adversaire.'
+    : 'Tape le code que ton adversaire t\'a donné.';
+  $('dice').classList.toggle('hidden', m !== 'create');
+  hide('lobby-err');
+}
+function lobbyError(msg){ $('lobby-err').textContent = msg; show('lobby-err'); }
+function showLobby(msg){
+  hide('over'); hide('rules');
+  showScreen('s-lobby');
+  $('go').disabled = false; setMode(mode);
+  if(msg) lobbyError(msg);
+}
+function resetGameView(){
+  S = null; seenRound = 0; curGame = null; pending = null; animating = false; firstState = true;
+  $('over').dataset.key = ''; $('stage').innerHTML = '';
+}
+function start(code, m){
+  resetGameView();
+  $('bigcode').textContent = code;
+  $('go').disabled = true; $('go').textContent = 'Connexion…';
   WG.connect({
-    game: 'poulets',
+    game: 'poulets', room: code, mode: m,
     onState,
     onTaunt: e => floaty(e, true),
-    onError: msg => { $('errmsg').textContent = msg; showScreen('s-error'); },
+    onError: msg => showLobby(msg),
   });
-  showScreen('s-wait');
 }
 
 $('name').value = WG.name();
-$('go').onclick = () => { WG.setName($('name').value.trim() || 'Poulet'); start(); };
-$('name').addEventListener('keydown', e => { if(e.key==='Enter') $('go').click(); });
-$('link').textContent = WG.link();
+$('tab-create').onclick = () => setMode('create');
+$('tab-join').onclick = () => { setMode('join'); $('code').value = ''; $('code').focus(); };
+$('dice').onclick = () => { $('code').value = WG.randomCode(); hide('lobby-err'); };
+$('code').addEventListener('input', () => { $('code').value = $('code').value.replace(/\D/g, '').slice(0, 4); hide('lobby-err'); });
+$('code').addEventListener('keydown', e => { if(e.key === 'Enter') $('go').click(); });
+$('go').onclick = () => {
+  const n = $('name').value.trim(), c = $('code').value;
+  if(!n) return lobbyError('Choisis d\'abord un nom de poulet 🐔');
+  if(!/^\d{4}$/.test(c)) return lobbyError('Le code doit faire 4 chiffres');
+  WG.setName(n);
+  start(c, mode);
+};
+$('cancel').onclick = () => { WG.leave(); showLobby(); };
+$('quit').onclick = () => { if(confirm('Quitter la partie ?')){ WG.leave(); showLobby(); } };
 $('share').onclick = () => WG.share($('share'), 'Duel de Poulets 🐔');
-$('rulesBtn').onclick = () => show('rules');
-$('rematchBtn').onclick = () => { sendMsg({type:'rematch'}); $('rematchBtn').disabled = true; };
 
-function showScreen(id){ ['s-name','s-wait','s-game','s-error'].forEach(s => s===id ? show(s) : hide(s)); }
+function showScreen(id){ ['s-lobby','s-wait','s-game'].forEach(s => s===id ? show(s) : hide(s)); }
 
 // ---------- État ----------
 function onState(st){
   const opp = 1 - st.you;
-  if(!st.names[opp]){ S = st; showScreen('s-wait'); return; }
+  $('go').disabled = false;
+  if(!st.names[opp]){ S = st; hide('over'); showScreen('s-wait'); return; }
   showScreen('s-game');
 
   const res = st.lastResult;
@@ -595,8 +642,11 @@ function floaty(e, fromOpp){
   document.body.appendChild(d); setTimeout(() => d.remove(), 1900);
 }
 
-// Auto-connexion si le nom est déjà connu
-if(WG.name()) start();
+// Lien direct (?room=1234) ou page rechargée : on reprend la partie
+setMode('create');
+const linkRoom = WG.urlRoom();
+if(linkRoom && WG.name()) start(linkRoom);
+else if(linkRoom){ setMode('join'); $('code').value = linkRoom; }
 </script>
 </body>
 </html>

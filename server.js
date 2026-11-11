@@ -132,29 +132,55 @@ wss.on('connection', (ws) => {
     try { msg = JSON.parse(raw); } catch { return; }
 
     if (msg.type === 'join') {
+      // mode : 'create' (je crée la partie), 'join' (je rejoins), absent = reconnexion (page rechargée)
       const game = games.get(String(msg.game || ''));
-      const code = String(msg.room || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+      const code = String(msg.room || '').replace(/\D/g, '').slice(0, 4);
       const pid = String(msg.pid || '').slice(0, 64);
       const name = String(msg.name || '').trim().slice(0, 14) || 'Joueur';
-      if (!game || !code || !pid) return send(ws, { type: 'error', message: 'Lien invalide' });
+      const mode = msg.mode;
+      const fail = (c, message) => send(ws, { type: 'error', code: c, message });
+      if (!game || !pid) return fail('bad', 'Jeu introuvable');
+      if (code.length !== 4) return fail('bad', 'Le code doit faire 4 chiffres');
+
+      const key = game.id + ':' + code;
+      const existing = rooms.get(key);
+      const mine = !!(existing && existing.players.some((p) => p && p.pid === pid));
+      if (!mine) {
+        const others = existing ? existing.players.filter(Boolean) : [];
+        if (mode === 'create') {
+          if (others.some(isConnected)) return fail('taken', 'Ce code est déjà pris, choisis-en un autre 🙃');
+          if (existing) { clearTimeout(existing.cleanup); rooms.delete(key); } // vieille partie abandonnée
+        }
+        if (mode === 'join' && others.length === 0) return fail('notfound', 'Aucune partie avec ce code 🤔');
+      }
 
       room = getRoom(game, code);
       slot = room.players.findIndex((p) => p && p.pid === pid);
       if (slot === -1) slot = room.players.findIndex((p) => p === null);
       if (slot === -1) {
         room = null;
-        return send(ws, { type: 'error', message: 'Cette partie est déjà complète 🙅' });
+        return fail('full', 'Cette partie est déjà complète 🙅');
       }
       const old = room.players[slot];
       if (old && old.ws && old.ws !== ws) { try { old.ws.close(); } catch {} }
       room.players[slot] = { pid, name, ws };
       clearTimeout(room.cleanup);
       if (room.game.onJoin) room.game.onJoin(room.state, slot, room);
+      send(ws, { type: 'joined', room: code, slot });
       broadcastState(room);
       return;
     }
 
     if (!room || slot < 0) return;
+
+    // Quitter la partie (retour au menu) : libère la place
+    if (msg.type === 'leave') {
+      room.players[slot] = null;
+      if (!room.players.some(Boolean)) { clearTimeout(room.cleanup); rooms.delete(room.key); }
+      else { room.state = room.game.init(); broadcastState(room); }
+      room = null; slot = -1;
+      return;
+    }
 
     // Provocations : communes à tous les jeux
     if (msg.type === 'taunt') {
