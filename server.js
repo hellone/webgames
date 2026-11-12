@@ -100,22 +100,65 @@ function send(ws, msg) {
   if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg));
 }
 
-function isConnected(p) {
+function isHumanOnline(p) {
   return !!(p && p.ws && p.ws.readyState === 1);
+}
+// L'ordi est toujours « connecté »
+function isConnected(p) {
+  return !!(p && (p.bot || isHumanOnline(p)));
+}
+
+// Ce que voit le joueur « i » : exactement la même chose pour un humain et pour l'ordi
+function viewFor(room, i) {
+  const names = room.players.map((p) => (p ? p.name : null));
+  const connected = room.players.map(isConnected);
+  return { type: 'state', you: i, names, connected, ...room.game.view(room.state, i, room) };
 }
 
 function broadcastState(room) {
-  const names = room.players.map((p) => (p ? p.name : null));
-  const connected = room.players.map(isConnected);
   room.players.forEach((p, i) => {
-    if (!p) return;
-    send(p.ws, { type: 'state', you: i, names, connected, ...room.game.view(room.state, i, room) });
+    if (p && p.ws) send(p.ws, viewFor(room, i));
   });
+  maybeBot(room);
+}
+
+function makeCtx(room) {
+  return {
+    room,
+    full: room.players.every((p) => p !== null),
+    // envoyer un message ponctuel (ex. effet) à un joueur ou à tous
+    emit: (msg2, to = null) => room.players.forEach((p, i) => { if (p && (to === null || to === i)) send(p.ws, msg2); }),
+  };
+}
+
+// ---------- L'ordi (joueur fantôme) ----------
+// Il ne reçoit que la vue d'un joueur (viewFor) : il ne voit jamais les secrets.
+// Ses coups passent par game.onMessage, avec les mêmes vérifications que ceux d'un humain.
+const BOT_LEVELS = ['facile', 'moyen', 'difficile'];
+
+function maybeBot(room) {
+  const b = room.bot;
+  if (!b || b.timer || !rooms.has(room.key)) return;
+  const g = room.game;
+  const view = viewFor(room, b.slot);
+  if (g.botSee) g.botSee(view, b.mem);              // l'ordi observe (comme un joueur qui regarde l'écran)
+  if (!g.botWants(view)) return;
+  b.timer = setTimeout(() => {
+    b.timer = null;
+    if (!rooms.has(room.key)) return;
+    const v = viewFor(room, b.slot);
+    if (!g.botWants(v)) return;
+    let move = null;
+    try { move = g.botMove(v, b.level, b.mem); } catch (e) { console.error('IA', g.id, e); }
+    if (!move) return;
+    const changed = g.onMessage(room.state, b.slot, move, makeCtx(room));
+    if (changed !== false) broadcastState(room);
+  }, Math.max(150, g.botDelay ? g.botDelay(view, b.level) : 1200));
 }
 
 function scheduleCleanup(room) {
   clearTimeout(room.cleanup);
-  if (!room.players.some(isConnected)) {
+  if (!room.players.some(isHumanOnline)) {
     room.cleanup = setTimeout(() => rooms.delete(room.key), 6 * 60 * 60 * 1000);
   }
 }
@@ -134,12 +177,27 @@ wss.on('connection', (ws) => {
     if (msg.type === 'join') {
       // mode : 'create' (je crée la partie), 'join' (je rejoins), absent = reconnexion (page rechargée)
       const game = games.get(String(msg.game || ''));
-      const code = String(msg.room || '').replace(/\D/g, '').slice(0, 4);
+      let code = String(msg.room || '').replace(/\D/g, '').slice(0, 4);
       const pid = String(msg.pid || '').slice(0, 64);
       const name = String(msg.name || '').trim().slice(0, 14) || 'Joueur';
       const mode = msg.mode;
       const fail = (c, message) => send(ws, { type: 'error', code: c, message });
       if (!game || !pid) return fail('bad', 'Jeu introuvable');
+
+      // Partie contre l'ordi : nouvelle salle avec un code libre, l'ordi prend la 2e place
+      if (mode === 'bot') {
+        if (!game.botMove) return fail('nobot', 'Ce jeu ne se joue pas contre l\'ordi');
+        do { code = String(Math.floor(Math.random() * 10000)).padStart(4, '0'); } while (rooms.has(game.id + ':' + code));
+        const level = BOT_LEVELS.includes(msg.level) ? msg.level : 'moyen';
+        room = getRoom(game, code);
+        room.bot = { slot: 1, level, mem: {}, timer: null };
+        room.players[0] = { pid, name, ws };
+        room.players[1] = { pid: 'bot', name: game.botName ? game.botName(level) : '🤖 Ordi', ws: null, bot: true };
+        slot = 0;
+        send(ws, { type: 'joined', room: code, slot, bot: true });
+        broadcastState(room);
+        return;
+      }
       if (code.length !== 4) return fail('bad', 'Le code doit faire 4 chiffres');
 
       const key = game.id + ':' + code;
@@ -176,8 +234,11 @@ wss.on('connection', (ws) => {
     // Quitter la partie (retour au menu) : libère la place
     if (msg.type === 'leave') {
       room.players[slot] = null;
-      if (!room.players.some(Boolean)) { clearTimeout(room.cleanup); rooms.delete(room.key); }
-      else { room.state = room.game.init(); broadcastState(room); }
+      if (!room.players.some((p) => p && !p.bot)) {
+        clearTimeout(room.cleanup);
+        if (room.bot) clearTimeout(room.bot.timer);
+        rooms.delete(room.key);
+      } else { room.state = room.game.init(); broadcastState(room); }
       room = null; slot = -1;
       return;
     }
@@ -189,13 +250,7 @@ wss.on('connection', (ws) => {
       return;
     }
 
-    const ctx = {
-      room,
-      full: room.players.every((p) => p !== null),
-      // envoyer un message ponctuel (ex. effet) à un joueur ou à tous
-      emit: (msg2, to = null) => room.players.forEach((p, i) => { if (p && (to === null || to === i)) send(p.ws, msg2); }),
-    };
-    const changed = room.game.onMessage(room.state, slot, msg, ctx);
+    const changed = room.game.onMessage(room.state, slot, msg, makeCtx(room));
     if (changed !== false) broadcastState(room);
   });
 

@@ -61,6 +61,14 @@ module.exports = {
     return false;
   },
 
+  // ---------- Contre l'ordi ----------
+  // Pur hasard : l'ordi lance le dé à son tour. C'est le serveur qui tire le dé, pour lui comme pour toi.
+  botName: () => '🤖 Robot-Ordi',
+  botWants: (v) => (v.winner !== null ? !v.rematch[v.you] : v.turn === v.you),
+  // laisser le temps à l'animation du lancer précédent (≈ 2 s) avant de relancer
+  botDelay: (v) => (v.winner !== null ? 6500 : 2300 + Math.random() * 700),
+  botMove: (v) => (v.winner !== null ? { type: 'rematch' } : { type: 'roll' }),
+
   view(m) {
     return {
       robots: m.robots, done: m.done, turn: m.turn, rolls: m.rolls, seq: m.seq, last: m.last,

@@ -1,6 +1,7 @@
 // PLOUF ! — logique serveur (Ours polaires contre pingouins)
 // Joueur 0 = les Ours, joueur 1 = les Pingouins. Les règles viennent de rules.js (partagé avec la page).
 const R = require('./rules.js');
+const AI = require('./ai.js');
 
 const SIZE = 9;
 const MODE = 'joueur'; // 3 actions par tour à partager entre ses deux animaux (comme dans le jeu Godot)
@@ -59,6 +60,34 @@ module.exports = {
       return true;
     }
     return false;
+  },
+
+  // ---------- Contre l'ordi (il joue les pingouins, comme dans le jeu Godot) ----------
+  botName: (level) => `🤖 Ordi (${level})`,
+
+  // L'ordi regarde l'écran : il note les bonus qui sortent des cailloux (pour estimer ce qui reste caché)
+  botSee(v, mem) {
+    if (mem.gameNo !== v.gameNo) { mem.gameNo = v.gameNo; mem.revealed = {}; mem.seq = v.seq; }
+    if (v.seq > mem.seq) {
+      mem.seq = v.seq;
+      for (const st of v.steps || []) if (st.type === 'break' && st.bonus) mem.revealed[st.bonus] = (mem.revealed[st.bonus] || 0) + 1;
+    }
+  },
+
+  botWants: (v) => (v.g.over ? !v.rematch[v.you] : v.g.turn === v.you),
+
+  // Laisser le temps à l'animation du coup précédent, puis « réfléchir » un peu
+  botDelay(v, level) {
+    if (v.g.over) return 2500;
+    const T = { walk: 160, slide: 105, pickup: 260, break: 460, flick: 330, fall: 880, buoy: 500, wave: 380, magnet: 300 };
+    const anim = (v.steps || []).reduce((t, st) => t + (T[st.type] || 0), 0);
+    return anim + 450 + Math.random() * 500 + (level === 'facile' ? 0 : 200);
+  },
+
+  botMove(v, level, mem) {
+    if (v.g.over) return { type: 'rematch' };
+    const act = AI.choose(v.g, level, mem.revealed || {});
+    return act ? { type: 'act', act } : { type: 'pass' };
   },
 
   view(m) {

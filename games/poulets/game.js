@@ -99,6 +99,71 @@ module.exports = {
     return false;
   },
 
+  // ---------- Contre l'ordi ----------
+  // L'ordi choisit SANS voir ton choix (la vue cache le choix adverse : seulement « a choisi »).
+  // Il ne connaît que ce qui est public : cœurs, graines, actions révélées des rounds précédents.
+  botName: (level) => `🤖 Poulet-Ordi (${level})`,
+
+  // Il retient tes habitudes à partir des révélations (ce que tout le monde voit à l'écran)
+  botSee(v, mem) {
+    if (!mem.hist) mem.hist = [];
+    const r = v.lastResult;
+    if (r && r.round !== mem.lastRound && (mem.gameNo !== v.gameNo || r.round > (mem.lastRound || 0))) {
+      // graines de l'adversaire AVANT ce round (pour savoir dans quelle situation il a joué)
+      mem.hist.push({ seeds: mem.prevOppSeeds ?? 1, a: r.actions[1 - v.you] });
+      if (mem.hist.length > 60) mem.hist.shift();
+    }
+    if (mem.gameNo !== v.gameNo && !r) mem.prevOppSeeds = START_SEEDS;
+    mem.gameNo = v.gameNo; mem.lastRound = r ? r.round : 0;
+    mem.prevOppSeeds = v.seeds[1 - v.you];
+  },
+
+  botWants: (v) => (v.winner !== null ? !v.rematch[v.you] : !v.myChoice),
+  botDelay: (v) => (v.winner !== null ? 3500 : 900 + Math.random() * 2600),
+
+  botMove(v, level, mem) {
+    if (v.winner !== null) return { type: 'rematch' };
+    const me = v.you, op = 1 - me;
+    const g = { hp: v.hp.slice(), seeds: v.seeds.slice(), lastAction: v.lastAction.slice(), winner: null };
+    const mine = ACTIONS.filter((a) => canPlay(g, me, a));
+    const theirs = ACTIONS.filter((a) => canPlay(g, op, a));
+    if (level === 'facile') return { type: 'choose', action: mine[Math.floor(Math.random() * mine.length)] };
+
+    // Valeur d'un round simulé (mes actions × les siennes)
+    const value = (ma, oa) => {
+      const sim = { hp: g.hp.slice(), seeds: g.seeds.slice(), lastAction: g.lastAction.slice(), choices: [null, null],
+        round: 0, winner: null, score: [0, 0], lastResult: null };
+      sim.choices[me] = ma; sim.choices[op] = oa;
+      resolve(sim);
+      if (sim.winner === me) return 1000;
+      if (sim.winner === op) return -1000;
+      if (sim.winner === 'draw') return -150;
+      return 10 * (sim.hp[me] - sim.hp[op]) + 2.4 * (sim.seeds[me] - sim.seeds[op]) - (sim.lastAction[me] === 'plumes' ? 1 : 0);
+    };
+
+    // Ce que l'adversaire risque de jouer
+    let prob = Object.fromEntries(theirs.map((a) => [a, 1 / theirs.length]));
+    if (level === 'difficile' && mem.hist && mem.hist.length >= 3) {
+      // ses habitudes dans une situation proche (même niveau de graines), lissées
+      const bucket = (n) => (n === 0 ? 0 : n <= 2 ? 1 : 2);
+      const same = mem.hist.filter((h) => bucket(h.seeds) === bucket(g.seeds[op]));
+      const pool = same.length >= 3 ? same : mem.hist;
+      const counts = Object.fromEntries(theirs.map((a) => [a, 1]));
+      for (const h of pool) if (h.a in counts) counts[h.a] += 2;
+      const tot = Object.values(counts).reduce((x, y) => x + y, 0);
+      prob = Object.fromEntries(theirs.map((a) => [a, counts[a] / tot]));
+    }
+
+    // Espérance de chaque action, puis choix « mixte » (pour ne pas être prévisible)
+    const ev = mine.map((ma) => ({ a: ma, v: theirs.reduce((t, oa) => t + prob[oa] * value(ma, oa), 0) }));
+    const temp = level === 'difficile' ? 2.5 : 7;
+    const maxV = Math.max(...ev.map((e) => e.v));
+    const w = ev.map((e) => Math.exp((e.v - maxV) / temp));
+    let x = Math.random() * w.reduce((t, y) => t + y, 0);
+    for (let i = 0; i < ev.length; i++) { x -= w[i]; if (x <= 0) return { type: 'choose', action: ev[i].a }; }
+    return { type: 'choose', action: ev[ev.length - 1].a };
+  },
+
   view(g, i) {
     return {
       gameNo: g.gameNo,

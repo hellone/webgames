@@ -45,7 +45,11 @@
   button.big:active:not(:disabled){transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
   button:disabled{opacity:.5}
   .ghost{padding:11px;font-size:1rem;background:#ffffffd9}
-  .tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .tabs .tab{padding-left:2px;padding-right:2px;font-size:.88rem;white-space:nowrap}
+  .levels{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .levels button{padding:10px 2px;font-size:.92rem;box-shadow:0 3px 0 #0007}
+  .levels button.on{background:#ffd23f;transform:translateY(-2px)}
   .tab{padding:11px;font-size:1.02rem;box-shadow:0 4px 0 var(--ink)}
   .tab.on{background:var(--peng);color:#fff}
   .coderow{display:flex;gap:8px}
@@ -179,12 +183,14 @@
       <div class="tabs">
         <button id="tab-create" class="tab on">⚔️ Créer</button>
         <button id="tab-join" class="tab">🔑 Rejoindre</button>
+        <button id="tab-bot" class="tab">🤖 Ordi</button>
       </div>
       <p class="small" id="code-help">Choisis un code à 4 chiffres et donne-le à ton adversaire.</p>
-      <div class="coderow">
+      <div class="coderow" id="coderow">
         <input id="code" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="····" autocomplete="off">
         <button id="dice" aria-label="Code au hasard">🎲</button>
       </div>
+      <div class="levels hidden" id="levels"><button data-l="facile">😊 Facile</button><button data-l="moyen">😐 Moyen</button><button data-l="difficile">😈 Difficile</button></div>
       <div id="lobby-err" class="err hidden"></div>
       <button id="go" class="big">Créer la partie</button>
     </div>
@@ -296,13 +302,20 @@ let mode = 'create';
 // ---------- Menu ----------
 function setMode(m){
   mode = m;
-  $('tab-create').classList.toggle('on', m === 'create');
-  $('tab-join').classList.toggle('on', m === 'join');
-  $('go').textContent = m === 'create' ? 'Créer la partie' : 'Rejoindre le combat';
-  $('code-help').textContent = m === 'create' ? 'Choisis un code à 4 chiffres et donne-le à ton adversaire.' : 'Tape le code que ton adversaire t\'a donné.';
+  ['create', 'join', 'bot'].forEach(k => $('tab-' + k).classList.toggle('on', m === k));
+  $('go').textContent = m === 'create' ? 'Créer la partie' : m === 'join' ? 'Rejoindre le combat' : 'Jouer contre l\'ordi';
+  $('code-help').textContent = m === 'create' ? 'Choisis un code à 4 chiffres et donne-le à ton adversaire.'
+    : m === 'join' ? 'Tape le code que ton adversaire t\'a donné.' : "L'ordi joue les pingouins. Choisis son niveau :";
   $('dice').classList.toggle('hidden', m !== 'create');
+  $('coderow').classList.toggle('hidden', m === 'bot');
+  if($('levels')) $('levels').classList.toggle('hidden', m !== 'bot');
   hide('lobby-err');
 }
+// Niveau de l'ordi (retenu sur le téléphone)
+let botLevel = WG.store('wg_level') || 'moyen';
+function showLevel(){ document.querySelectorAll('#levels button').forEach(b => b.classList.toggle('on', b.dataset.l === botLevel)); }
+document.querySelectorAll('#levels button').forEach(b => b.onclick = () => { botLevel = b.dataset.l; WG.store('wg_level', botLevel); showLevel(); });
+showLevel();
 function lobbyError(msg){ $('lobby-err').textContent = msg; show('lobby-err'); }
 function showScreen(id){ ['s-lobby','s-wait','s-game'].forEach(s => s === id ? show(s) : hide(s)); }
 function showLobby(msg){
@@ -317,10 +330,10 @@ function resetGameView(){
 }
 function start(code, m){
   resetGameView();
-  $('bigcode').textContent = code;
+  $('bigcode').textContent = code || '····';
   $('go').disabled = true; $('go').textContent = 'Connexion…';
   WG.connect({
-    game: 'plouf', room: code, mode: m,
+    game: 'plouf', room: code, mode: m, level: botLevel,
     onState,
     onTaunt: e => floaty(e, true),
     onError: msg => showLobby(msg),
@@ -329,12 +342,14 @@ function start(code, m){
 $('name').value = WG.name();
 $('tab-create').onclick = () => setMode('create');
 $('tab-join').onclick = () => { setMode('join'); $('code').value = ''; $('code').focus(); };
+$('tab-bot').onclick = () => setMode('bot');
 $('dice').onclick = () => { $('code').value = WG.randomCode(); hide('lobby-err'); };
 $('code').addEventListener('input', () => { $('code').value = $('code').value.replace(/\D/g, '').slice(0, 4); hide('lobby-err'); });
 $('code').addEventListener('keydown', e => { if(e.key === 'Enter') $('go').click(); });
 $('go').onclick = () => {
   const n = $('name').value.trim(), c = $('code').value;
   if(!n) return lobbyError('Choisis d\'abord un pseudo');
+  if(mode === 'bot'){ WG.setName(n); return start(null, 'bot'); }
   if(!/^\d{4}$/.test(c)) return lobbyError('Le code doit faire 4 chiffres');
   WG.setName(n); start(c, mode);
 };

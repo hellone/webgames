@@ -2,7 +2,7 @@
 // Usage dans la page d'un jeu :
 //   <script src="../common/client.js"></script>
 //   WG.connect({ game: 'poulets', room: '4821', mode: 'create', onState, onJoined, onTaunt, onError });
-//     mode : 'create' (je crée avec ce code) | 'join' (je rejoins) | absent (reconnexion)
+//     mode : 'create' (je crée avec ce code) | 'join' (je rejoins) | 'bot' (contre l'ordi, avec level) | absent (reconnexion)
 //   WG.send({ type: 'choose', action: 'bec' });
 //   WG.leave();   // quitter la partie et revenir au menu
 (function () {
@@ -47,7 +47,7 @@
     ws.onopen = () => {
       // Après la 1re connexion réussie, les reconnexions ne précisent plus le mode
       const mode = joinedOnce ? undefined : opts.mode;
-      sock.send(JSON.stringify({ type: 'join', game: opts.game, room: opts.room, mode, pid, name: WG.name() }));
+      sock.send(JSON.stringify({ type: 'join', game: opts.game, room: opts.room || '', mode, level: opts.level, pid, name: WG.name() }));
     };
     ws.onmessage = (ev) => {
       const m = JSON.parse(ev.data);
