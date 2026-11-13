@@ -274,6 +274,7 @@
 </div>
 
 <script src="../common/client.js"></script>
+<script src="../common/sound.js"></script>
 <script src="rules.js"></script>
 <script>
 const R = window.PloufRules;
@@ -335,7 +336,7 @@ function start(code, m){
   WG.connect({
     game: 'plouf', room: code, mode: m, level: botLevel,
     onState,
-    onTaunt: e => floaty(e, true),
+    onTaunt: e => { floaty(e, true); SFX.play('pop'); },
     onError: msg => showLobby(msg),
   });
 }
@@ -548,7 +549,7 @@ function tapCell(x, y){
   if(a && a.team === G.turn){
     if(selected === a.id){ deselect(); return; }
     if(!R.actionsForAnimal(G, a).length){ toast(R.actsFor(G, a) === 0 ? 'Cet animal a fini ses actions.' : 'Cet animal ne peut rien faire.', x, y); return; }
-    selected = a.id; itemMode = false; showTargets(); renderUI(); WG.vibrate(10);
+    selected = a.id; itemMode = false; showTargets(); renderUI(); WG.vibrate(10); SFX.play('select');
     return;
   }
   deselect();
@@ -691,11 +692,11 @@ async function playSteps(steps){
     const e = st.id ? els.pcs[st.id] : null;
     switch(st.type){
       case 'walk':
-        a.x = st.x; a.y = st.y; e.style.transitionDuration = '.15s'; place(e, st.x, st.y);
+        a.x = st.x; a.y = st.y; e.style.transitionDuration = '.15s'; place(e, st.x, st.y); SFX.play('step');
         await wait(160); break;
       case 'slide':
         a.x = st.x; a.y = st.y; e.style.transitionDuration = '.1s'; place(e, st.x, st.y);
-        burst(st.x, st.y, null, 3, .4, .1, ['#ffffff', '#cfe8fb']);
+        burst(st.x, st.y, null, 3, .4, .1, ['#ffffff', '#cfe8fb']); SFX.play('slide');
         await wait(105); break;
       case 'pickup': {
         const k = R.key(st.x, st.y);
@@ -707,7 +708,7 @@ async function playSteps(steps){
         else if(st.bonus === 'aimant' || st.bonus === 'vague') a.pocket = st.bonus;
         e.querySelector('.badges').innerHTML = badgesFor(a);
         burst(st.x, st.y, null, 10, .8, .12, ['#ffe27a', '#fff59d', '#ffffff']);
-        fxText(BONUS_TEXT[st.bonus] || 'Bonus !', st.x, st.y, '#ffe27a', C * .36, 1400);
+        fxText(BONUS_TEXT[st.bonus] || 'Bonus !', st.x, st.y, '#ffe27a', C * .36, 1400); SFX.play('coin');
         WG.vibrate(15);
         await wait(260); break;
       }
@@ -719,14 +720,14 @@ async function playSteps(steps){
           delete els.rocks[k];
           rock.animate([{transform:'scale(1) rotate(0)'}, {transform:'scale(1.2) rotate(-10deg)', offset:.3}, {transform:'scale(0) rotate(30deg)', opacity:0}], {duration:300}).onfinish = () => rock.remove();
         }
-        delete G.rocks[k];
+        delete G.rocks[k]; SFX.play('crack');
         burst(st.x, st.y, null, 12, 1, .14, ['#8e8e93', '#b0b0b5', '#ffffff']);
         if(st.bonus){
           G.items[k] = st.bonus;
           const it = addAt('item', st.x, st.y, `<span>${BONUS_ICON[st.bonus] || '🎁'}</span>`); els.items[k] = it;
           it.animate([{transform:'scale(0) translateY(0)'}, {transform:'scale(1.4) translateY(-30%)', offset:.5}, {transform:'scale(1) translateY(0)'}], {duration:450, easing:'ease-out'});
           burst(st.x, st.y, '✨', 4, .7, .3);
-          fxText('Un bonus !', st.x, st.y, '#ffe27a', C * .36);
+          fxText('Un bonus !', st.x, st.y, '#ffe27a', C * .36); SFX.play('coin');
         } else fxText('crac !', st.x, st.y, '#fff', C * .34, 900);
         WG.vibrate(12);
         await wait(320); break;
@@ -734,7 +735,7 @@ async function playSteps(steps){
       case 'flick': {
         bump(st.id, dirBetween(a, st.x, st.y), .45);
         await wait(120);
-        fxText(st.power > 1 ? 'BONK x' + st.power : 'BONK !', st.x, st.y, '#fff', C * .55, 1100);
+        fxText(st.power > 1 ? 'BONK x' + st.power : 'BONK !', st.x, st.y, '#fff', C * .55, 1100); SFX.play('bonk');
         burst(st.x, st.y, '💥', 1, .1, .6);
         const t = els.pcs[st.target];
         if(t) t.querySelector('.av span').animate([{transform:'rotate(0)'}, {transform:'rotate(-25deg) scale(.85)'}, {transform:'rotate(0)'}], {duration:300});
@@ -748,7 +749,7 @@ async function playSteps(steps){
         e.querySelector('.av span').animate([{transform:'translateY(0) scale(1)', opacity:1}, {transform:'translateY(30%) scale(.2) rotate(40deg)', opacity:0}], {duration:450, fill:'forwards'});
         e.querySelector('.base').animate([{opacity:.85}, {opacity:0}], {duration:300, fill:'forwards'});
         splash(st.x, st.y);
-        fxText('PLOUF !', st.x, st.y, '#7fd6ff', C * .9, 1600);
+        fxText('PLOUF !', st.x, st.y, '#7fd6ff', C * .9, 1600); SFX.play('splash');
         WG.vibrate([60, 40, 120]);
         await wait(700);
         e.classList.add('dead');
@@ -760,7 +761,7 @@ async function playSteps(steps){
         a.buoy = false; e.querySelector('.badges').innerHTML = badgesFor(a);
         burst(st.x, st.y, '🛟', 3, .9, .4);
         splash(st.x, st.y);
-        fxText('Sauvé par la bouée !', st.x, st.y, '#ffb3b3', C * .34, 1600);
+        fxText('Sauvé par la bouée !', st.x, st.y, '#ffb3b3', C * .34, 1600); SFX.play('splash', {v: .5}); SFX.play('pop');
         await wait(500); break;
       case 'wave': {
         a.pocket = ''; e.querySelector('.badges').innerHTML = badgesFor(a);
@@ -771,13 +772,13 @@ async function playSteps(steps){
         const w = document.createElement('div'); w.className = 'pt'; w.textContent = '🌊'; w.style.fontSize = C * .9 + 'px';
         w.style.left = sx + 'px'; w.style.top = sy + 'px'; $('fx').appendChild(w);
         w.animate([{transform:'translate(-50%,-50%) scale(.5)', opacity:1}, {transform:`translate(calc(-50% + ${tx - sx}px), calc(-50% + ${ty - sy}px)) scale(1.3)`, opacity:.2}], {duration:450, easing:'ease-in'}).onfinish = () => w.remove();
-        fxText('Vague !', a.x, a.y, '#7fd6ff', C * .45);
+        fxText('Vague !', a.x, a.y, '#7fd6ff', C * .45); SFX.play('whoosh');
         await wait(380); break;
       }
       case 'magnet':
         a.pocket = ''; e.querySelector('.badges').innerHTML = badgesFor(a);
         burst(a.x, a.y, '🧲', 3, .6, .35);
-        fxText('Aimant !', a.x, a.y, '#ff8a80', C * .42);
+        fxText('Aimant !', a.x, a.y, '#ff8a80', C * .42); SFX.play('magnet');
         await wait(300); break;
       case 'turn':
         G.turn = st.team;
@@ -788,6 +789,7 @@ async function playSteps(steps){
   Object.values(els.pcs).forEach(e => e.style.transitionDuration = '');
   animating = false;
   const turnStep = steps.find(s => s.type === 'turn');
+  if(turnStep && !S.g.over && turnStep.team === you) SFX.play('turn');
   if(turnStep && !S.g.over) banner(turnStep.team === you ? 'À toi !' : 'Tour de ' + S.names[1 - you], turnStep.team === you ? '#ffd23f' : '#fff');
   // garder le même animal sélectionné s'il peut encore jouer
   if(keepSel && !turnStep && S.g.turn === you){
@@ -809,14 +811,15 @@ function showOver(){
   setTimeout(() => {
     if(w === -1){
       $('over-emoji').textContent = '🤝';
-      $('over-title').textContent = 'Match nul';
+      $('over-title').textContent = 'Match nul'; SFX.play('miss');
       $('over-text').textContent = G.end_reason === 'limit' ? 'Plus de manches : personne n\'est tombé à l\'eau.' : 'Tout le monde a fini dans l\'eau !';
     } else if(w === you){
       $('over-emoji').textContent = '🏆';
       $('over-title').textContent = 'Victoire !';
       $('over-text').textContent = `Les ${TEAM[opp].name.toLowerCase()} de ${S.names[opp]} ont fini à l'eau. Les ${TEAM[you].name.toLowerCase()} règnent sur la banquise !`;
-      confetti();
+      confetti(); SFX.play('win');
     } else {
+      SFX.play('lose');
       $('over-emoji').textContent = '💦';
       $('over-title').textContent = 'Plouf…';
       $('over-text').textContent = `${S.names[opp]} a jeté tes ${TEAM[you].name.toLowerCase()} à l'eau. Revanche ?`;
@@ -845,7 +848,7 @@ function confetti(){
 let lastTaunt = 0;
 TAUNTS.forEach(e => {
   const b = document.createElement('button'); b.textContent = e;
-  b.onclick = () => { const t = Date.now(); if(t - lastTaunt < 800) return; lastTaunt = t; WG.send({type:'taunt', e}); floaty(e, false); };
+  b.onclick = () => { const t = Date.now(); if(t - lastTaunt < 800) return; lastTaunt = t; WG.send({type:'taunt', e}); floaty(e, false); SFX.play('pop'); };
   $('taunts').appendChild(b);
 });
 function floaty(e, fromOpp){

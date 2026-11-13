@@ -228,6 +228,7 @@
 </div>
 
 <script src="../common/client.js"></script>
+<script src="../common/sound.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const show = id => $(id).classList.remove('hidden');
@@ -320,7 +321,7 @@ function start(code, m){
   $('over').dataset.key = '';
   $('bigcode').textContent = code || '····';
   $('go').disabled = true; $('go').textContent = 'Connexion…';
-  WG.connect({ game: 'robots', room: code, mode: m, level: botLevel, onState, onTaunt: e => floaty(e, true), onError: msg => showLobby(msg) });
+  WG.connect({ game: 'robots', room: code, mode: m, level: botLevel, onState, onTaunt: e => { floaty(e, true); SFX.play('pop'); }, onError: msg => showLobby(msg) });
 }
 $('name').value = WG.name();
 $('tab-create').onclick = () => setMode('create');
@@ -438,7 +439,7 @@ let spinTimer = null, spinAnim = null;
 function rollSpin(){
   if(spinTimer) return;
   let f = Math.floor(Math.random() * 6);
-  spinTimer = setInterval(() => { f = (f + 1 + Math.floor(Math.random() * 5)) % 6; drawDie(f); }, 75);
+  spinTimer = setInterval(() => { f = (f + 1 + Math.floor(Math.random() * 5)) % 6; drawDie(f); SFX.play('tick'); }, 75);
   spinAnim = $('die').animate([
     {transform:'translateY(0) rotate(0)'}, {transform:'translateY(-26px) rotate(180deg) scale(1.1)'},
     {transform:'translateY(0) rotate(360deg)'}], {duration: 450, iterations: Infinity});
@@ -494,7 +495,7 @@ async function playRoll(prev, st){
   rollSpin();
   await wait(L.player === you ? 650 : 900);
   stopSpin();
-  drawDie(L.face);
+  drawDie(L.face); SFX.play('select');
   $('die').animate([{transform:'scale(1.35) rotate(-12deg)'}, {transform:'scale(.9) rotate(6deg)'}, {transform:'scale(1) rotate(0)'}], {duration: 380, easing:'ease-out'});
   if(L.player === you) renderLegend(L.face);
   await wait(300);
@@ -512,11 +513,11 @@ async function playRoll(prev, st){
     $('p-' + side).textContent = n + '/10'; $('b-' + side).style.width = (n * 10) + '%';
     setMsg(L.player === you ? `<span style="color:${face.c};-webkit-text-stroke:.5px #14162b">■</span>&nbsp;${cap(face.name)} : tu colories ${PART_NAME[k]} !` :
       `${esc(st.names[L.player])} colorie ${PART_NAME[k]} en ${face.name}.`);
-    WG.vibrate(L.player === you ? 30 : 10);
+    WG.vibrate(L.player === you ? 30 : 10); SFX.play('ding', {v: L.player === you ? 1 : .6});
   } else {
     const has = st.robots[L.player].includes(L.face);
     const [x, y] = arenaPoint(svg);
-    fxText('Raté !', x, y - 40, '#fff', 26);
+    fxText('Raté !', x, y - 40, '#fff', 26); SFX.play('miss');
     svg.animate([{transform: side === 'opp' ? 'scaleX(-1) rotate(0)' : 'rotate(0)'}, {transform: side === 'opp' ? 'scaleX(-1) rotate(-6deg)' : 'rotate(-6deg)'},
       {transform: side === 'opp' ? 'scaleX(-1) rotate(6deg)' : 'rotate(6deg)'}, {transform: side === 'opp' ? 'scaleX(-1)' : 'none'}], {duration: 450});
     const msg = has ? `plus rien en ${face.name}` : `aucune pièce ${face.f}`;
@@ -536,6 +537,7 @@ async function knockout(winner){
   ['me','opp'].forEach(s => $('slot-' + s).classList.remove('idle', 'active'));
   setMsg(winner === you ? '🤖 Ton robot est complet !' : `🤖 Le robot de ${esc(S.names[winner])} est complet !`);
   // 1. le gagnant saute de joie
+  SFX.play('jump');
   await wMove.animate([{transform:'translateY(0)'}, {transform:'translateY(-30px) rotate(-4deg)'}, {transform:'translateY(0)'},
     {transform:'translateY(-18px) rotate(3deg)'}, {transform:'translateY(0)'}], {duration: 750, easing:'ease-out'}).finished;
   // 2. il fonce et donne un coup de poing
@@ -547,7 +549,7 @@ async function knockout(winner){
   arm.animate([{transform:'rotate(0)'}, {transform:'rotate(30deg)', offset:.4}, {transform:'rotate(-95deg) scaleY(1.2)'}], {duration: 420, fill:'forwards'});
   await wait(400);
   const [lx, ly] = arenaPoint(lSvg);
-  fxText('POW !', lx, ly - 30, '#ffd23f', 54, 1400);
+  fxText('POW !', lx, ly - 30, '#ffd23f', 54, 1400); SFX.play('punch');
   burst(lx, ly, 1, 5, null, ['💥'], 70);
   $('app').classList.remove('shake'); void $('app').offsetWidth; $('app').classList.add('shake');
   WG.vibrate([80, 40, 160]);
@@ -563,7 +565,7 @@ async function knockout(winner){
     ], {duration: 1300 + Math.random() * 400, delay: i * 25, easing:'cubic-bezier(.2,.6,.4,1)', fill:'forwards'});
   });
   lSvg.querySelectorAll('rect:not(.part):not(.gloss), .eye').forEach(e => e.animate([{opacity:1}, {opacity:0}], {duration: 300, fill:'forwards'}));
-  burst(lx, ly, 10, 110, null, ['🔩', '⚙️', '💨', '🔧'], 24);
+  burst(lx, ly, 10, 110, null, ['🔩', '⚙️', '💨', '🔧'], 24); SFX.play('explode');
   burst(lx, ly, 18, 90, ['#ff9a1f', '#ffd93b', '#ff4d4d', '#ffffff']);
   await wait(500);
   // le gagnant revient et fait le malin
@@ -584,8 +586,9 @@ function showOver(){
     if(w === you){
       $('over-emoji').textContent = '🏆'; $('over-title').textContent = 'Victoire !';
       $('over-text').textContent = `Ton robot est complet en ${S.rolls[you]} lancers. Celui de ${S.names[opp]} part à la casse !`;
-      confetti();
+      confetti(); SFX.play('win');
     } else {
+      SFX.play('lose');
       $('over-emoji').textContent = '🔧'; $('over-title').textContent = 'K.O. !';
       $('over-text').textContent = `${S.names[opp]} a fini son robot en premier (${S.rolls[opp]} lancers). Il te manquait ${10 - countDone(you)} pièce${10 - countDone(you) > 1 ? 's' : ''}. Revanche ?`;
     }
@@ -612,7 +615,7 @@ function confetti(){
 let lastTaunt = 0;
 TAUNTS.forEach(e => {
   const b = document.createElement('button'); b.textContent = e;
-  b.onclick = () => { const t = Date.now(); if(t - lastTaunt < 800) return; lastTaunt = t; WG.send({type:'taunt', e}); floaty(e, false); };
+  b.onclick = () => { const t = Date.now(); if(t - lastTaunt < 800) return; lastTaunt = t; WG.send({type:'taunt', e}); floaty(e, false); SFX.play('pop'); };
   $('taunts').appendChild(b);
 });
 function floaty(e, fromOpp){

@@ -62,7 +62,8 @@
 
   /* ---------- Jeu ---------- */
   header{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px}
-  header button{padding:5px 10px;font-size:1rem;box-shadow:0 3px 0 #000a}
+  header button{padding:5px 10px;font-size:1rem;box-shadow:0 3px 0 #000a;white-space:nowrap;flex-shrink:0}
+  header .score{flex:1;min-width:0;max-width:none;text-align:center}
   .score{font-family:"Luckiest",sans-serif;font-size:1.1rem;background:#fff;border:2px solid var(--ink);border-radius:10px;padding:5px 10px 1px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%}
   #stage{position:relative;flex:1;min-height:0;border:3px solid var(--ink);border-radius:18px;overflow:hidden;box-shadow:0 5px 0 #000a;
@@ -175,6 +176,7 @@
 </div>
 
 <script src="../common/client.js"></script>
+<script src="../common/sound.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const show = id => $(id).classList.remove('hidden');
@@ -269,7 +271,7 @@ function stepRunner(r, dt, t, isMe){
   // animaux : ils traversent quand ils arrivent à la hauteur du coureur
   r.lock = false;
   W.animals.forEach((a, i) => {
-    if(!r.animals.has(i)){ if(r.d >= a.A){ r.animals.set(i, t); if(isMe) addFx('SAUTE ! ' + a.e, null, '#ffd23f', 34); } else return; }
+    if(!r.animals.has(i)){ if(r.d >= a.A){ r.animals.set(i, t); if(isMe){ addFx('SAUTE ! ' + a.e, null, '#ffd23f', 34); SFX.play('alert'); } } else return; }
     const at = t - r.animals.get(i); if(animalGone(a, at)) return;
     const ax = animalX(a, at);
     if(ax > -0.7 && ax < LANES - 0.3) r.lock = true;  // pendant la traversée : pas d'esquive sur le côté
@@ -286,7 +288,7 @@ function stepRunner(r, dt, t, isMe){
   }
   if(r.d >= L){
     r.d = L; r.done = true; r.finishT = t; r.jumpT = -1;
-    if(isMe){ WG.send({type:'finish', time: t, hits: r.hits}); addFx('ARRIVÉE !', null, '#ffd23f', 44); WG.vibrate([40, 30, 40]); }
+    if(isMe){ WG.send({type:'finish', time: t, hits: r.hits}); addFx('ARRIVÉE !', null, '#ffd23f', 44); SFX.play('finish'); WG.vibrate([40, 30, 40]); }
     else if(R && R.bot) WG.send({type:'finish', bot: 1, time: t, hits: r.hits});
   }
 }
@@ -294,7 +296,7 @@ function hit(r, key, isMe, emoji){
   r.hitSet.add(key); r.stumble = STUMBLE; r.inv = INVUL; r.hits++; r.jumpT = -1;
   if(isMe){
     addFx(emoji ? 'Bam ! ' + emoji : ['Aïe !','Ouille !','Boum !'][r.hits % 3], null, '#ff5e5e', 34);
-    WG.vibrate(emoji ? [60, 30, 60] : 120);
+    WG.vibrate(emoji ? [60, 30, 60] : 120); SFX.play('bonk');
     $('stage').classList.remove('shake'); void $('stage').offsetWidth; $('stage').classList.add('shake');
   }
 }
@@ -547,7 +549,7 @@ function onState(st){
   }
   if($('s-game').classList.contains('hidden')) showScreen('s-game');
   if(st.gameNo !== curGame){ curGame = st.gameNo; $('over').dataset.key = ''; hide('over'); setupRace(st); }
-  $('score').textContent = `${st.names[you]} ${st.score[you]} – ${st.score[opp]} ${st.names[opp]}`;
+  $('score').textContent = `Toi ${st.score[you]} – ${st.score[opp]}`;
   if(st.phase === 'over' && R){
     if(!R.frozen){ R.frozen = true; if(st.winner !== you) addFx(`${st.names[opp]} a gagné !`, null, '#fff', 30); }
     showOver();
@@ -561,8 +563,9 @@ function onMessage(m){
 function act(kind){
   if(!R || R.frozen) return;
   const t = (performance.now() - R.start) / 1000; if(t < 0) return;
-  if(kind === 'jump'){ if(tryJump(R.me)) WG.vibrate(10); }
-  else if(!tryMove(R.me, kind === 'left' ? -1 : 1) && R.me.lock) WG.vibrate(30);
+  if(kind === 'jump'){ if(tryJump(R.me)){ WG.vibrate(10); SFX.play('jump'); } }
+  else if(tryMove(R.me, kind === 'left' ? -1 : 1)) SFX.play('swish');
+  else if(R.me.lock){ WG.vibrate(30); SFX.play('nope'); }
 }
 function bindBtn(id, kind){
   const b = $(id);
@@ -598,6 +601,8 @@ function loop(now){
   const dt = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now;
   if(!R || $('s-game').classList.contains('hidden')) return;
   const t = (now - R.start) / 1000;
+  const cd = t < 0 ? Math.ceil(-t) : 0;                 // bips du compte à rebours
+  if(cd !== R.cd){ if(R.cd !== undefined && cd <= 3) SFX.play(cd === 0 ? 'go' : 'beep'); R.cd = cd; }
   if(t > 0 && !R.frozen){
     stepRunner(R.me, dt, t, true);
     if(R.bot){ botThink(R.opp, t, R.bot); stepRunner(R.opp, dt, t, false); }
@@ -613,7 +618,7 @@ function loop(now){
 requestAnimationFrame(loop);
 
 // État affiché de l'adversaire (ordi local, ou humain extrapolé entre deux messages)
-function oppView(now){
+function oppView(now, t){
   if(R.bot){ const o = R.opp; return {d: o.d, lx: o.lx, air: airOf(o), stumble: o.stumble > 0, run: o.run}; }
   const o = R.opp, n = oppNet;
   if(n){
@@ -623,6 +628,8 @@ function oppView(now){
     o.jumpT = n.j >= 0 && n.j + el < JUMP ? n.j + el : -1;
     o.stumble = n.h ? 1 : 0;
     if(!R.frozen) o.run += .016 * speedAt(o.d) / 300;
+    // les animaux traversent aussi quand l'adversaire arrive à leur hauteur (le choc lui-même est géré sur son téléphone)
+    if(t > 0) W.animals.forEach((a, i) => { if(!o.animals.has(i) && o.d >= a.A) o.animals.set(i, t); });
   }
   return {d: o.d, lx: o.lx, air: airOf(o), stumble: o.stumble > 0, run: o.run};
 }
@@ -670,30 +677,41 @@ function draw(t, now){
     const y = sy(obsY(o, Math.max(0, t))); if(y < -90 || y > H + 90) continue;
     drawObstacle(c, o, laneX(o.lane), y, lw);
   }
-  // animaux (ceux de ma course)
-  W.animals.forEach((a, i) => {
-    let x, y, flip = a.dir > 0, crossing = false;
-    if(me.animals.has(i)){
-      const at = t - me.animals.get(i); if(animalGone(a, at)) return;
-      x = G.side + lw * (animalX(a, at) + .5); y = RY - 2; crossing = true;
-    } else {
-      y = sy(a.A); if(y < -60) return;
-      x = G.side + lw * (animalX(a, 0) + .5);
-    }
+  // animaux : chacun traverse quand un coureur arrive à sa hauteur (moi ET l'adversaire, ordi compris)
+  const ov = oppView(now, t), oppIdx = 1 - you, opp = R.opp;
+  const oy = sy(ov.d) - 12;
+  const drawAnimal = (a, i, x, y, crossing) => {
     c.save(); c.translate(x, y + (crossing ? 0 : Math.sin(now / 180 + i) * 2));
     c.fillStyle = '#00000044'; c.beginPath(); c.ellipse(0, 17, 18, 6, 0, 0, 7); c.fill();
     c.fillStyle = crossing ? '#ffd23f99' : '#ffffff66'; c.beginPath(); c.arc(0, 0, 24, 0, 7); c.fill();  // halo : bien visible
-    if(flip) c.scale(-1, 1);
+    if(a.dir > 0) c.scale(-1, 1);
     c.font = '40px ' + EMOJI_FONT; c.fillText(a.e, 0, 2);
     c.restore();
-    if(!crossing && a.A - cam < 300){
-      c.font = '900 22px Nunito, sans-serif'; c.fillStyle = '#ffd23f'; c.strokeStyle = '#14162b'; c.lineWidth = 4;
-      const by = y - 32 + Math.sin(now / 90) * 3; c.strokeText('!', x, by); c.fillText('!', x, by);
+  };
+  W.animals.forEach((a, i) => {
+    // encore au bord de la route tant qu'un des deux coureurs ne l'a pas atteint
+    if(!me.animals.has(i) || !opp.animals.has(i)){
+      const y = sy(a.A), x = G.side + lw * (animalX(a, 0) + .5);
+      if(y > -60 && y < H + 60){
+        drawAnimal(a, i, x, y, false);
+        if(!me.animals.has(i) && a.A - cam < 300){
+          c.font = '900 22px Nunito, sans-serif'; c.fillStyle = '#ffd23f'; c.strokeStyle = '#14162b'; c.lineWidth = 4;
+          const by = y - 32 + Math.sin(now / 90) * 3; c.strokeText('!', x, by); c.fillText('!', x, by);
+        }
+      }
+    }
+    // il traverse à la hauteur de l'adversaire
+    if(opp.animals.has(i)){
+      const at = t - opp.animals.get(i);
+      if(!animalGone(a, at) && oy > -40 && oy < H + 40) drawAnimal(a, i, G.side + lw * (animalX(a, at) + .5), oy - 2, true);
+    }
+    // … et à la mienne
+    if(me.animals.has(i)){
+      const at = t - me.animals.get(i);
+      if(!animalGone(a, at)) drawAnimal(a, i, G.side + lw * (animalX(a, at) + .5), RY - 2, true);
     }
   });
   // coureurs : l'adversaire un poil plus haut (pas sur le même plan), puis moi par-dessus
-  const ov = oppView(now), oppIdx = 1 - you;
-  const oy = sy(ov.d) - 12;
   if(oy > -40 && oy < H + 40){
     drawRunner(c, laneX(ov.lx), oy, S.picks[oppIdx], ov.run, ov.air, {stumble: ov.stumble, alpha: .92});
     label(c, laneX(ov.lx), oy - 46 - ov.air * 30, S.names[oppIdx], '#ffffffdd');
@@ -763,8 +781,9 @@ function showOver(){
       $('over-emoji').textContent = '🏆'; $('over-title').textContent = 'Victoire !';
       const lead = meters(L - (R ? R.opp.d : 0));
       $('over-text').textContent = `Ligne franchie en ${ft} s avec ${S.hits[w]} choc${S.hits[w] > 1 ? 's' : ''}. ${S.names[opp]} était encore à ${lead} m !`;
-      confetti();
+      confetti(); SFX.play('win');
     } else {
+      SFX.play('lose');
       $('over-emoji').textContent = '😵'; $('over-title').textContent = 'Battu !';
       $('over-text').textContent = `${S.names[opp]} a passé la ligne en ${ft} s. Il te restait ${meters(L - me.d)} m (${me.hits} choc${me.hits > 1 ? 's' : ''}). Revanche ?`;
     }

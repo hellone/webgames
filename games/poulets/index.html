@@ -231,6 +231,7 @@
 </div>
 
 <script src="../common/client.js"></script>
+<script src="../common/sound.js"></script>
 <script>
 const ACTIONS = {
   picorer:{ico:'🌽',name:'Picorer',desc:'+1 graine',cost:0},
@@ -286,7 +287,7 @@ function start(code, m){
   WG.connect({
     game: 'poulets', room: code, mode: m, level: botLevel,
     onState,
-    onTaunt: e => floaty(e, true),
+    onTaunt: e => { floaty(e, true); SFX.play('pop'); },
     onError: msg => showLobby(msg),
   });
 }
@@ -389,7 +390,7 @@ function render(){
     let ok = st.winner===null && a.cost <= st.seeds[me] && st.connected[opp];
     if(k==='plumes' && st.lastAction[me]==='plumes'){ ok=false; b.querySelector('span').textContent='Repos des plumes ce round'; }
     b.disabled = !ok;
-    b.onclick = () => { sendMsg({type:'choose',action:k}); if(navigator.vibrate) navigator.vibrate(15); };
+    b.onclick = () => { sendMsg({type:'choose',action:k}); if(navigator.vibrate) navigator.vibrate(15); SFX.play('select'); };
     box.appendChild(b);
   });
 
@@ -498,8 +499,8 @@ function actAnim(slot, action, r){
       {transform:'none'}, {transform:'rotate(40deg) translateY(8px)'}, {transform:'none'},
       {transform:'rotate(40deg) translateY(8px)'}, {transform:'none'}
     ], {duration:650, easing:'ease-in-out'});
-    setTimeout(() => burst(chick, '🌽', 4, 45, 1), 150);
-    setTimeout(() => popText(card.querySelector('.seeds'), '+1 🌽', '#3bb273', 1.2), 350);
+    setTimeout(() => { burst(chick, '🌽', 4, 45, 1); SFX.play('peck'); }, 150);
+    setTimeout(() => { popText(card.querySelector('.seeds'), '+1 🌽', '#3bb273', 1.2); SFX.play('coin', {v: .6}); }, 350);
   }
   else if(action === 'bec'){
     anim(body, [
@@ -508,7 +509,8 @@ function actAnim(slot, action, r){
       {transform:`translateY(${dir*75}px) scale(1.2)`, offset:.55},
       {transform:'none'}
     ], {duration:650, easing:'ease-in-out'});
-    setTimeout(() => burst(other, '💢', 1, 10, 1.6), 330);
+    SFX.play('cluck');
+    setTimeout(() => { burst(other, '💢', 1, 10, 1.6); SFX.play('peck'); }, 330);
   }
   else if(action === 'mega'){
     anim(body, [
@@ -517,19 +519,19 @@ function actAnim(slot, action, r){
       {transform:`translateY(${dir*85}px) rotate(720deg) scale(1.35)`, offset:.7},
       {transform:'none'}
     ], {duration:850, easing:'ease-in-out'});
-    setTimeout(() => fly('🌪️', chick, other, 420, 2.6, 900).then(() => burst(other, '🪶', 8, 70, 1.3)), 250);
+    setTimeout(() => { SFX.play('whoosh'); fly('🌪️', chick, other, 420, 2.6, 900).then(() => { burst(other, '🪶', 8, 70, 1.3); SFX.play('punch'); }); }, 250);
     setTimeout(() => anim(document.body, [{transform:'translate(0,0)'},{transform:'translate(-6px,4px)'},{transform:'translate(5px,-4px)'},{transform:'translate(0,0)'}], {duration:250}), 680);
   }
   else if(action === 'plumes'){
     anim(body, [
       {transform:'scale(1)'}, {transform:'scale(1.5)', offset:.25}, {transform:'scale(1.35)', offset:.8}, {transform:'scale(1)'}
     ], {duration:900, easing:'ease-out'});
-    burst(chick, '🪶', 6, 55, 1.2);
-    if(r.blocked[slot]) setTimeout(() => popText(card, 'BLOQUÉ !', '#4c8dff', 1.6), 330);
+    burst(chick, '🪶', 6, 55, 1.2); SFX.play('puff');
+    if(r.blocked[slot]) setTimeout(() => { popText(card, 'BLOQUÉ !', '#4c8dff', 1.6); SFX.play('nope'); }, 330);
   }
   else if(action === 'oeuf'){
     const c = center(chick);
-    const egg = spawn('🥚', c.x + (slot === S.you ? 50 : -50), c.y + 10, 1.8);
+    const egg = spawn('🥚', c.x + (slot === S.you ? 50 : -50), c.y + 10, 1.8); SFX.play('pop');
     anim(egg, [
       {transform:'translate(-50%,-150%) scale(.3)', opacity:0},
       {transform:'translate(-50%,-50%) scale(1)', opacity:1, offset:.3},
@@ -539,7 +541,7 @@ function actAnim(slot, action, r){
     ], {duration:600, fill:'forwards'});
     if(r.reflected[slot]){
       setTimeout(() => {
-        egg.remove();
+        egg.remove(); SFX.play('explode');
         burst(chick, '💥', 1, 5, 2.4);
         fly('💥', chick, other, 300, 2.4, 0).then(() => { burst(other, '💥', 5, 50, 1.6); burst(other, '🍳', 1, 20, 2); });
       }, 380);
@@ -560,7 +562,7 @@ function playReveal(prev, st){
 
   // 1. Révélation des deux cartes
   $('stage').innerHTML = `<div class="clash"><span class="pop">${ACTIONS[r.actions[me]].ico}</span><span class="vs">VS</span><span class="pop" style="animation-delay:.25s;opacity:0;animation-fill-mode:forwards">${ACTIONS[r.actions[opp]].ico}</span></div><div class="narr" id="narr"></div>`;
-  WG.vibrate([20,60,20]);
+  WG.vibrate([20,60,20]); SFX.play('pop');
 
   // 2. Les poulets agissent
   setTimeout(() => {
@@ -574,7 +576,7 @@ function playReveal(prev, st){
     $('narr').innerHTML = narrate(r, st.names).map(l => `<div>${l}</div>`).join('');
     [me, opp].forEach(i => {
       if(r.dmg[i] > 0){
-        shake(i, r.dmg[i] >= 2);
+        shake(i, r.dmg[i] >= 2); SFX.play('bonk');
         popText(cardOf(i), `-${r.dmg[i]} ❤️`, '#e2462f', r.dmg[i] >= 2 ? 2.2 : 1.8);
         if(i === me) WG.vibrate(r.dmg[i] >= 2 ? [80,40,80] : 80);
       }
@@ -593,6 +595,7 @@ function playReveal(prev, st){
 // K.O. : le perdant tombe et finit en pilon, le gagnant saute de joie
 function koFx(st){
   const losers = st.winner === 'draw' ? [0, 1] : [1 - st.winner];
+  SFX.play('punch'); setTimeout(() => SFX.play('cluck'), 600);
   losers.forEach(i => {
     const b = bodyOf(i);
     b.classList.add('ko');
@@ -617,9 +620,9 @@ function showOver(st){
   $('over').dataset.key = key;
   koFx(st);
   setTimeout(() => {
-    if(st.winner==='draw'){ $('over-emoji').textContent='🍳'; $('over-title').textContent='Égalité !'; $('over-text').textContent='Deux poulets K.O. en même temps. Omelette pour tout le monde.'; }
-    else if(st.winner===me){ $('over-emoji').textContent='🏆'; $('over-title').textContent='Victoire !'; $('over-text').textContent=`${st.names[opp]} finit en nuggets. Tu es le roi de la basse-cour.`; confetti(); }
-    else { $('over-emoji').textContent='🍗'; $('over-title').textContent='Défaite…'; $('over-text').textContent=`${st.names[opp]} t'a plumé. Revanche ?`; }
+    if(st.winner==='draw'){ $('over-emoji').textContent='🍳'; $('over-title').textContent='Égalité !'; $('over-text').textContent='Deux poulets K.O. en même temps. Omelette pour tout le monde.'; SFX.play('lose'); }
+    else if(st.winner===me){ $('over-emoji').textContent='🏆'; $('over-title').textContent='Victoire !'; $('over-text').textContent=`${st.names[opp]} finit en nuggets. Tu es le roi de la basse-cour.`; confetti(); SFX.play('win'); }
+    else { $('over-emoji').textContent='🍗'; $('over-title').textContent='Défaite…'; $('over-text').textContent=`${st.names[opp]} t'a plumé. Revanche ?`; SFX.play('lose'); }
     $('rematchBtn').disabled = !!st.rematch[me];
     updateRematch(st);
     show('over');
@@ -646,7 +649,7 @@ function confetti(){
 let lastTaunt = 0;
 TAUNTS.forEach(e => {
   const b = document.createElement('button'); b.textContent = e;
-  b.onclick = () => { const t = Date.now(); if(t - lastTaunt < 800) return; lastTaunt = t; sendMsg({type:'taunt', e}); floaty(e, false); };
+  b.onclick = () => { const t = Date.now(); if(t - lastTaunt < 800) return; lastTaunt = t; sendMsg({type:'taunt', e}); floaty(e, false); SFX.play('pop'); };
   $('taunts').appendChild(b);
 });
 function floaty(e, fromOpp){
