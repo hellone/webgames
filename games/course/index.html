@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#123d2a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>COURSE FOLLE</title>
+<style>
+  @font-face{font-family:"Luckiest";src:url(../common/fonts/LuckiestGuy-Regular.ttf) format("truetype");font-display:swap}
+  @font-face{font-family:"Nunito";src:url(../common/fonts/Nunito.ttf) format("truetype");font-weight:200 1000;font-display:swap}
+  :root{--ink:#14162b;--gold:#ffd23f;--card:#fbfaff;--muted:#6b6f91;--green:#22b573}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;color:var(--ink);font-family:"Nunito",system-ui,sans-serif;overscroll-behavior:none;
+    -webkit-user-select:none;user-select:none}
+  body{background:radial-gradient(ellipse at 50% 0%,#3fae6a 0%,#1d6b45 45%,#0f3523 100%);background-attachment:fixed;overflow:hidden}
+  #app{position:relative;z-index:1;max-width:560px;margin:0 auto;height:100%;display:flex;flex-direction:column;
+    padding:calc(env(safe-area-inset-top) + 8px) 10px calc(env(safe-area-inset-bottom) + 8px)}
+  .hidden{display:none!important}
+  .title{font-family:"Luckiest",sans-serif;letter-spacing:1px;color:#fff;-webkit-text-stroke:3px var(--ink);paint-order:stroke fill;
+    text-shadow:0 5px 0 var(--ink)}
+  h1.title{font-size:3rem;margin:.1em 0 0;text-align:center;line-height:1}
+  h1.title span{color:var(--gold)}
+  h2{font-family:"Luckiest",sans-serif;letter-spacing:.5px;font-weight:normal;text-align:center;margin:.4em 0}
+  .screen{flex:1;display:flex;flex-direction:column;min-height:0}
+  .center{justify-content:center;gap:12px;text-align:center;padding:0 6px;overflow-y:auto}
+  .sub{color:#e2ffe9;font-weight:800;margin:0}
+  .box{background:var(--card);border:3px solid var(--ink);border-radius:20px;padding:14px;box-shadow:0 6px 0 #000a;
+    display:flex;flex-direction:column;gap:10px}
+  input{font:inherit;font-size:1.15rem;font-weight:800;padding:12px;border:3px solid var(--ink);border-radius:14px;
+    background:#fff;text-align:center;width:100%;color:var(--ink);-webkit-user-select:text;user-select:text}
+  button{font:inherit;font-weight:900;cursor:pointer;border:3px solid var(--ink);border-radius:14px;background:#fff;color:var(--ink)}
+  button.big{font-family:"Luckiest",sans-serif;font-weight:normal;letter-spacing:.5px;font-size:1.35rem;padding:13px 12px 9px;
+    background:var(--gold);box-shadow:0 5px 0 var(--ink);transition:transform .08s,box-shadow .08s}
+  button.big:active:not(:disabled){transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+  #go{font-size:2rem;padding:14px 12px 8px}
+  button:disabled{opacity:.45}
+  .ghost{padding:11px;font-size:1rem;background:#ffffffd9}
+  .tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .tab{padding:11px 2px;font-size:.88rem;white-space:nowrap;box-shadow:0 4px 0 var(--ink)}
+  .tab.on{background:var(--green);color:#fff}
+  .levels{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .levels button{padding:10px 2px;font-size:.92rem;box-shadow:0 3px 0 #0007}
+  .levels button.on{background:var(--gold);transform:translateY(-2px)}
+  .coderow{display:flex;gap:8px}
+  #code{font-family:"Luckiest",sans-serif;font-size:2.3rem;letter-spacing:.42em;padding:12px 0 6px .42em}
+  #dice{font-size:1.8rem;padding:0 14px;box-shadow:0 4px 0 var(--ink)}
+  .small{font-size:.86rem;color:var(--muted);font-weight:700;margin:0}
+  .err{background:#ffe3e0;border:2px solid #e53935;border-radius:12px;padding:9px;font-weight:900;color:#b71c1c}
+  .bigcode{font-family:"Luckiest",sans-serif;font-size:4rem;letter-spacing:.22em;background:#fff;border:3px dashed var(--ink);
+    border-radius:18px;padding:16px 0 8px .22em}
+
+  /* Choix du personnage */
+  .chars{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .char{padding:6px 2px 6px;border-radius:16px;background:#ffffffe6;box-shadow:0 4px 0 #000a;display:flex;flex-direction:column;
+    align-items:center;gap:2px;transition:transform .15s,background .15s}
+  .char canvas{width:78px;height:96px}
+  .char b{font-size:.92rem}
+  .char.on{background:var(--gold);transform:translateY(-4px) scale(1.04)}
+  .chars.mini .char canvas{width:52px;height:64px}
+  .chars.mini .char b{font-size:.78rem}
+
+  /* ---------- Jeu ---------- */
+  header{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px}
+  header button{padding:5px 10px;font-size:1rem;box-shadow:0 3px 0 #000a}
+  .score{font-family:"Luckiest",sans-serif;font-size:1.1rem;background:#fff;border:2px solid var(--ink);border-radius:10px;padding:5px 10px 1px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%}
+  #stage{position:relative;flex:1;min-height:0;border:3px solid var(--ink);border-radius:18px;overflow:hidden;box-shadow:0 5px 0 #000a;
+    touch-action:none;background:#4fbf55}
+  #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #pad{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px;touch-action:none}
+  #pad button{font-size:2.2rem;padding:12px 0 10px;border-radius:18px;background:#fff;box-shadow:0 5px 0 var(--ink);
+    transition:transform .06s,box-shadow .06s,opacity .2s,background .2s;touch-action:none}
+  #pad button.press{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+  #pad #bJump{background:var(--gold)}
+  #pad.lock .lat{opacity:.35;background:#ccc}
+  #pad.lock #bJump{animation:pulse .5s ease-in-out infinite}
+  @keyframes pulse{50%{transform:scale(1.08);background:#ff9a1f}}
+
+  .overlay{position:fixed;inset:0;background:#0b0c1ccc;display:flex;align-items:center;justify-content:center;padding:18px;z-index:60}
+  .modal{background:var(--card);border:3px solid var(--ink);border-radius:22px;padding:18px;max-width:440px;width:100%;
+    box-shadow:0 7px 0 #000;max-height:88vh;overflow:auto}
+  .rules li{line-height:1.4;font-weight:700;margin:5px 0}
+  .result-emoji{font-size:5rem;text-align:center;line-height:1.1}
+  .confetti{position:fixed;top:-20px;font-size:1.6rem;animation:fall linear forwards;z-index:65;pointer-events:none}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+  .shake{animation:shake .4s}
+  @keyframes shake{20%{transform:translate(-7px,3px)}40%{transform:translate(6px,-3px)}60%{transform:translate(-4px,2px)}80%{transform:translate(3px,-1px)}}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Menu : persos, Créer / Rejoindre, START -->
+  <section id="s-lobby" class="screen center">
+    <h1 class="title">COURSE <span>FOLLE</span></h1>
+    <p class="sub">Esquive tout ce qui arrive… et saute par-dessus les animaux !</p>
+    <div class="box">
+      <div class="chars" id="chars"></div>
+      <input id="name" maxlength="14" placeholder="Ton pseudo" autocomplete="off">
+      <div class="tabs">
+        <button id="tab-create" class="tab on">⚔️ Créer</button>
+        <button id="tab-join" class="tab">🔑 Rejoindre</button>
+        <button id="tab-bot" class="tab">🤖 Ordi</button>
+      </div>
+      <p class="small" id="code-help">Choisis un code à 4 chiffres et donne-le à ton adversaire.</p>
+      <div class="coderow" id="coderow">
+        <input id="code" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="····" autocomplete="off">
+        <button id="dice" aria-label="Code au hasard">🎲</button>
+      </div>
+      <div class="levels hidden" id="levels">
+        <button data-l="facile">🐢 Facile</button><button data-l="moyen">🤖 Moyen</button><button data-l="difficile">🚀 Difficile</button>
+      </div>
+      <div id="lobby-err" class="err hidden"></div>
+      <button id="go" class="big">START</button>
+    </div>
+    <button class="ghost" onclick="WG.home()">🏠 Retour aux jeux</button>
+  </section>
+
+  <!-- Attente -->
+  <section id="s-wait" class="screen center hidden">
+    <h2 class="title" style="font-size:1.8rem">En attente de ton adversaire…</h2>
+    <div class="box">
+      <p style="margin:0;font-weight:900">Donne-lui ce code :</p>
+      <div id="bigcode" class="bigcode">····</div>
+      <p class="small">Il ou elle choisit son perso, « Rejoindre » et tape ce code.</p>
+    </div>
+    <button id="share" class="ghost">🔗 Ou envoyer un lien direct</button>
+    <button id="cancel" class="ghost">✖ Annuler</button>
+  </section>
+
+  <!-- Course -->
+  <section id="s-game" class="screen hidden">
+    <header>
+      <button id="quit" aria-label="Quitter">🏠</button>
+      <span class="score" id="score">0 – 0</span>
+      <button id="rulesBtn">? Règles</button>
+    </header>
+    <div id="stage"><canvas id="cv"></canvas></div>
+    <div id="pad">
+      <button id="bLeft" class="lat" aria-label="Gauche">⬅️</button>
+      <button id="bJump" aria-label="Sauter">⬆️</button>
+      <button id="bRight" class="lat" aria-label="Droite">➡️</button>
+    </div>
+  </section>
+</div>
+
+<!-- Fin de manche -->
+<div id="over" class="overlay hidden">
+  <div class="modal" style="text-align:center">
+    <div class="result-emoji" id="over-emoji">🏆</div>
+    <h2 class="title" id="over-title" style="font-size:2.2rem">Victoire !</h2>
+    <p id="over-text" style="font-weight:800"></p>
+    <p class="small" style="margin-bottom:6px">Changer de perso pour la revanche :</p>
+    <div class="chars mini" id="chars2" style="margin-bottom:12px"></div>
+    <button class="big" id="rematchBtn" style="width:100%">Revanche !</button>
+    <p class="small" id="rematchInfo" style="margin-top:8px"></p>
+  </div>
+</div>
+
+<!-- Règles -->
+<div id="rules" class="overlay hidden">
+  <div class="modal rules">
+    <h2 style="margin-top:0">🏃 Règles de COURSE FOLLE</h2>
+    <ul>
+      <li>Vous courez <b>côte à côte</b> sur la même route, chacun sur son téléphone. Vous ne pouvez pas vous percuter : vous passez l'un à côté de l'autre.</li>
+      <li>Ce qui descend la route (<b>rochers, voitures, vélos, motos</b>) s'esquive avec <b>⬅️ et ➡️</b>. Sauter ne sert à rien contre eux !</li>
+      <li>Les <b>animaux</b> attendent au bord de la route. Quand ils arrivent à ta hauteur, ils <b>traversent</b> : impossible de les esquiver sur le côté, il faut <b>sauter ⬆️</b> au bon moment.</li>
+      <li>Chaque choc te fait trébucher et te ralentit un moment.</li>
+      <li>La route fait <b>1 km</b> et ça accélère petit à petit. Le premier qui passe la ligne 🏁 gagne la manche.</li>
+      <li>Astuce : tu peux aussi glisser le doigt sur la piste (gauche / droite) et toucher pour sauter. Au clavier : flèches et espace.</li>
+    </ul>
+    <button class="big" style="width:100%;margin-top:6px" onclick="hide('rules')">Compris !</button>
+  </div>
+</div>
+
+<script src="../common/client.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const show = id => $(id).classList.remove('hidden');
+const hide = id => $(id).classList.add('hidden');
+const esc = WG.esc;
+
+// ================= Réglages de la course (identiques sur les 2 téléphones) =================
+const L = 20000;            // longueur de la route (20 px = 1 m → 1 km)
+const LANES = 4;            // couloirs
+const JUMP = 0.62;          // durée d'un saut (s)
+const AVX = 4;              // vitesse de traversée d'un animal (couloirs / s)
+const STUMBLE = 0.7, INVUL = 1.5;
+const speedAt = d => 300 + 120 * Math.min(1, Math.max(0, d) / L);           // px/s, accélère jusqu'à l'arrivée
+const arrival = m => (L / 120) * Math.log((300 + 120 * m / L) / 300);       // temps pour atteindre m sans choc
+const meters = px => Math.max(0, Math.round(px / 20));
+
+const CHARS = [
+  {name:'Tornade',   shirt:'#ff5fa2', pants:'#5b3fa8', skin:'#f1c08f', hair:'#3b2314', kind:'curly'},
+  {name:'Casquette', shirt:'#3aa0ff', pants:'#2b2f4a', skin:'#c98a5b', hair:'#1b1208', hat:'#ff4d4d', kind:'cap'},
+  {name:'Bonnet',    shirt:'#3ddc6a', pants:'#7a4a22', skin:'#ffd7b0', hair:'#a8642a', hat:'#1d2142', kind:'beanie'},
+];
+const TYPES = {
+  rock: {len:46, w:.72, v:[70,110]},
+  car:  {len:76, w:.64, v:[130,190]},
+  bike: {len:42, w:.32, v:[40,70]},
+  moto: {len:48, w:.36, v:[200,260]},
+};
+const CAR_COLORS = ['#ff4d4d','#3aa0ff','#ffd23f','#ffffff','#a66bff','#ff9a1f','#2b2f4a'];
+const ANIMALS = ['🦌','🐗','🐄','🐑','🐕','🦆','🐓','🐐','🦊','🐇'];
+const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+const DECOR = ['🌳','🌲','🌳','🌼','🌲','🪨','🌷','🌳'];
+
+// Générateur pseudo-aléatoire à graine : même graine → exactement la même route sur les 2 téléphones
+function rngOf(seed){
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+function buildWorld(seed){
+  const r = rngOf(seed), obs = [], animals = [];
+  const pick = arr => arr[Math.floor(r() * arr.length)];
+  let m = 750, nextAnimal = 1900 + r() * 900, id = 0;
+  while(m < L - 500){
+    const p = m / L;
+    if(m >= nextAnimal){ // un animal : rien d'autre autour pour pouvoir se concentrer sur le saut
+      animals.push({A: m + 140, dir: r() < .5 ? 1 : -1, e: pick(ANIMALS)});
+      m += 640; nextAnimal = m + 1500 + r() * 1300 - p * 500;
+      continue;
+    }
+    // une rangée : 1 ou 2 couloirs bloqués (jamais tous)
+    const n = r() < .22 + .38 * p ? 2 : 1;
+    const lanes = [0, 1, 2, 3];
+    for(let i = 3; i > 0; i--){ const j = Math.floor(r() * (i + 1)); [lanes[i], lanes[j]] = [lanes[j], lanes[i]]; }
+    for(let k = 0; k < n; k++){
+      const x = r(), type = x < .3 ? 'rock' : x < .6 ? 'car' : x < .8 ? 'bike' : 'moto';
+      const T = TYPES[type], v = T.v[0] + r() * (T.v[1] - T.v[0]);
+      const meet = m + (r() - .5) * 40;
+      obs.push({id: id++, lane: lanes[k], type, v, len: T.len, w: T.w, y0: meet + v * arrival(meet),
+        color: pick(CAR_COLORS), rider: pick(CAR_COLORS)});
+    }
+    m += (330 - 140 * p) + r() * 110;
+  }
+  return {obs, animals};
+}
+const obsY = (o, t) => o.y0 - o.v * t;
+// position horizontale d'un animal (en couloirs) dt secondes après le début de sa traversée
+function animalX(a, dt){ return a.dir > 0 ? -0.95 + AVX * Math.max(0, dt) : LANES - 0.05 - AVX * Math.max(0, dt); }
+const animalGone = (a, dt) => dt > 0 && (a.dir > 0 ? animalX(a, dt) > LANES + 1.2 : animalX(a, dt) < -2.2);
+
+// ================= Coureurs =================
+function makeRunner(lane, d){
+  return {d: d || 0, lane, lx: lane, jumpT: -1, stumble: 0, inv: 0, hits: 0, hitSet: new Set(), animals: new Map(),
+    lock: false, done: false, finishT: null, run: 0, memo: new Map(), nextThink: 0};
+}
+const airOf = r => { if(r.jumpT < 0) return 0; const u = r.jumpT / JUMP; return 4 * u * (1 - u); };
+
+function tryMove(r, dir){
+  if(r.done || r.lock) return false;
+  const nl = Math.max(0, Math.min(LANES - 1, r.lane + dir));
+  if(nl === r.lane) return false;
+  r.lane = nl; return true;
+}
+function tryJump(r){ if(r.done || r.jumpT >= 0) return false; r.jumpT = 0; return true; }
+
+function stepRunner(r, dt, t, isMe){
+  if(r.done) return;
+  if(r.jumpT >= 0){ r.jumpT += dt; if(r.jumpT > JUMP) r.jumpT = -1; }
+  r.stumble = Math.max(0, r.stumble - dt); r.inv = Math.max(0, r.inv - dt);
+  const s = speedAt(r.d) * (r.stumble > 0 ? .35 : 1);
+  r.d += s * dt; r.run += dt * (r.stumble > 0 ? .5 : 1) * s / 300;
+  const step = dt / .12; r.lx += Math.max(-step, Math.min(step, r.lane - r.lx));
+  // animaux : ils traversent quand ils arrivent à la hauteur du coureur
+  r.lock = false;
+  W.animals.forEach((a, i) => {
+    if(!r.animals.has(i)){ if(r.d >= a.A){ r.animals.set(i, t); if(isMe) addFx('SAUTE ! ' + a.e, null, '#ffd23f', 34); } else return; }
+    const at = t - r.animals.get(i); if(animalGone(a, at)) return;
+    const ax = animalX(a, at);
+    if(ax > -0.7 && ax < LANES - 0.3) r.lock = true;  // pendant la traversée : pas d'esquive sur le côté
+    const key = 'a' + i;
+    if(!r.hitSet.has(key) && r.inv <= 0 && Math.abs(ax - r.lx) < .42 && airOf(r) < .35) hit(r, key, isMe, a.e);
+  });
+  // obstacles qui descendent : seule l'esquive gauche/droite marche
+  if(r.inv <= 0){
+    for(const o of W.obs){
+      const y = obsY(o, t);
+      if(Math.abs(y - r.d) > o.len / 2 + 12) continue;
+      if(Math.abs(o.lane - r.lx) < o.w / 2 + .17 && !r.hitSet.has(o.id)){ hit(r, o.id, isMe, null); break; }
+    }
+  }
+  if(r.d >= L){
+    r.d = L; r.done = true; r.finishT = t; r.jumpT = -1;
+    if(isMe){ WG.send({type:'finish', time: t, hits: r.hits}); addFx('ARRIVÉE !', null, '#ffd23f', 44); WG.vibrate([40, 30, 40]); }
+    else if(R && R.bot) WG.send({type:'finish', bot: 1, time: t, hits: r.hits});
+  }
+}
+function hit(r, key, isMe, emoji){
+  r.hitSet.add(key); r.stumble = STUMBLE; r.inv = INVUL; r.hits++; r.jumpT = -1;
+  if(isMe){
+    addFx(emoji ? 'Bam ! ' + emoji : ['Aïe !','Ouille !','Boum !'][r.hits % 3], null, '#ff5e5e', 34);
+    WG.vibrate(emoji ? [60, 30, 60] : 120);
+    $('stage').classList.remove('shake'); void $('stage').offsetWidth; $('stage').classList.add('shake');
+  }
+}
+
+// ================= L'ordi : il ne réagit qu'à ce qu'il voit arriver =================
+const BOT = {
+  facile:    {look:.42, miss:.30, jumpErr:.32, react:.24},
+  moyen:     {look:.62, miss:.12, jumpErr:.12, react:.14},
+  difficile: {look:.85, miss:.03, jumpErr:.04, react:.08},
+};
+function danger(b, lane, t, horizon){
+  const s = speedAt(b.d) * (b.stumble > 0 ? .35 : 1);
+  let best = {tm: Infinity, id: null};
+  for(const o of W.obs){
+    if(Math.abs(o.lane - lane) >= o.w / 2 + .22) continue;
+    const gap = obsY(o, t) - b.d, reach = o.len / 2 + 16;
+    if(gap + reach < 0) continue;                 // déjà derrière
+    const tm = Math.max(0, (gap - reach) / (s + o.v));
+    if(tm < horizon && tm < best.tm) best = {tm, id: o.id};
+  }
+  return best;
+}
+function botThink(b, t, level){
+  if(b.done) return;
+  const P = BOT[level] || BOT.moyen;
+  // les animaux : sauter pour être en l'air quand il passe
+  for(const [i, t0] of b.animals){
+    const a = W.animals[i], at = t - t0; if(animalGone(a, at)) continue;
+    const ahead = (b.lx - animalX(a, at)) * a.dir;
+    if(ahead <= 0 || b.jumpT >= 0) continue;
+    const key = 'a' + i;
+    if(!b.memo.has(key)) b.memo.set(key, Math.random() < P.jumpErr ? (Math.random() < .5 ? .45 : -.15) : (Math.random() - .5) * .06);
+    if(ahead / AVX <= JUMP / 2 + b.memo.get(key)) tryJump(b);
+  }
+  if(b.lock || t < b.nextThink) return;
+  b.nextThink = t + P.react;
+  const cur = danger(b, b.lane, t, P.look);
+  if(cur.id === null) return;
+  if(!b.memo.has(cur.id)) b.memo.set(cur.id, Math.random() < P.miss);
+  if(b.memo.get(cur.id)) return;  // raté : il ne l'a pas vu venir
+  const opts = [b.lane - 1, b.lane + 1].filter(l => l >= 0 && l < LANES)
+    .map(l => ({l, tm: danger(b, l, t, P.look + .5).tm + (l === 1 || l === 2 ? .01 : 0)}))
+    .sort((x, y) => y.tm - x.tm);
+  if(opts.length && opts[0].tm > cur.tm) tryMove(b, opts[0].l - b.lane);
+}
+
+// ================= Dessin =================
+function rr(c, x, y, w, h, r){ c.beginPath(); c.roundRect ? c.roundRect(x, y, w, h, r) : c.rect(x, y, w, h); }
+function drawRunner(c, x, y, ch, phase, air, o = {}){
+  const C = CHARS[ch] || CHARS[0], k = 1 + .3 * air;
+  c.save();
+  c.globalAlpha = (o.alpha ?? 1) * .28; c.fillStyle = '#000';
+  c.beginPath(); c.ellipse(x, y + 17, 13 * (1 - .35 * air), 5 * (1 - .35 * air), 0, 0, 7); c.fill();
+  c.globalAlpha = o.alpha ?? 1;
+  c.translate(x, y - air * 30); c.scale(k * (o.scale || 1), k * (o.scale || 1));
+  if(o.stumble) c.rotate(Math.sin(phase * 3) * .35);
+  const sw = air > 0 ? .6 : Math.sin(phase * 7);
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  const limb = (x1, y1, x2, y2, col, w) => {
+    c.strokeStyle = '#14162b'; c.lineWidth = w + 3.5; c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+    c.strokeStyle = col; c.lineWidth = w; c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+  };
+  // jambes (vue de dos)
+  for(const [dx, s] of [[-4.5, sw], [4.5, -sw]]){
+    limb(dx, 2, dx, 15 - Math.max(0, s) * 6, C.pants, 6);
+    c.fillStyle = '#14162b'; c.beginPath(); c.ellipse(dx, 16 - Math.max(0, s) * 6, 3.6, 2.6, 0, 0, 7); c.fill();
+  }
+  // bras
+  limb(-8, -9, -12, 1 + sw * 4, C.skin, 4.5);
+  limb(8, -9, 12, 1 - sw * 4, C.skin, 4.5);
+  // tronc
+  c.fillStyle = C.shirt; c.strokeStyle = '#14162b'; c.lineWidth = 2.5;
+  rr(c, -9, -14, 18, 18, 6); c.fill(); c.stroke();
+  // tête
+  const hx = 0, hy = -22;
+  if(C.kind === 'curly'){
+    c.fillStyle = C.hair; c.strokeStyle = '#14162b';
+    c.beginPath(); c.ellipse(0, -13, 9, 9, 0, 0, 7); c.fill(); c.stroke(); // cheveux longs dans le dos
+    for(const [px, py, pr] of [[-8,-24,6],[8,-24,6],[-5,-29,6],[5,-29,6],[0,-31,5.5],[-10,-18,5],[10,-18,5]]){
+      c.beginPath(); c.arc(px, py, pr, 0, 7); c.fill(); c.stroke();
+    }
+    c.beginPath(); c.arc(hx, hy, 8, 0, 7); c.fill();
+  } else {
+    c.fillStyle = C.skin; c.strokeStyle = '#14162b';
+    c.beginPath(); c.arc(hx, hy, 8, 0, 7); c.fill(); c.stroke();
+    c.fillStyle = C.hair; c.beginPath(); c.arc(hx, hy + 1, 7, Math.PI * .1, Math.PI * .9, true); c.fill();
+    if(C.kind === 'cap'){
+      c.fillStyle = C.hat;
+      c.beginPath(); c.ellipse(hx, hy - 9, 5, 7, 0, 0, 7); c.fill(); c.stroke();          // visière (vers l'avant)
+      c.beginPath(); c.arc(hx, hy - 1, 8.4, Math.PI, 0); c.closePath(); c.fill(); c.stroke();
+      c.fillStyle = '#fff'; c.beginPath(); c.arc(hx, hy - 8, 1.6, 0, 7); c.fill();
+    } else {
+      c.fillStyle = C.hat;
+      c.beginPath(); c.arc(hx, hy - 1, 8.6, Math.PI, 0); c.closePath(); c.fill(); c.stroke();
+      c.fillStyle = '#ff5e7e'; rr(c, -9, hy - 3, 18, 4.5, 2); c.fill(); c.stroke();
+      c.fillStyle = '#fff'; c.beginPath(); c.arc(hx, hy - 11, 3.6, 0, 7); c.fill(); c.stroke();     // pompon
+    }
+  }
+  if(o.stumble){ c.font = '12px ' + EMOJI_FONT; c.textAlign = 'center'; c.fillText('💫', 0, -36); }
+  c.restore();
+}
+
+function drawObstacle(c, o, x, y, lw){
+  const w = o.w * lw, h = o.len;
+  c.save(); c.translate(x, y); c.lineJoin = 'round'; c.strokeStyle = '#14162b'; c.lineWidth = 2.5;
+  if(o.type === 'rock'){
+    const r = w / 2;
+    c.fillStyle = '#00000033'; c.beginPath(); c.ellipse(0, r * .8, r, r * .35, 0, 0, 7); c.fill();
+    const g = c.createRadialGradient(-r * .3, -r * .3, r * .2, 0, 0, r);
+    g.addColorStop(0, '#b9b4a8'); g.addColorStop(1, '#6f6a60');
+    c.fillStyle = g; c.beginPath(); c.arc(0, 0, r, 0, 7); c.fill(); c.stroke();
+    c.rotate(-y / r);                          // il roule vers toi
+    c.strokeStyle = '#4a463f'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(-r * .6, -r * .1); c.lineTo(-r * .1, r * .2); c.lineTo(r * .3, -r * .2); c.stroke();
+    c.beginPath(); c.moveTo(-r * .1, -r * .7); c.lineTo(r * .1, -r * .35); c.stroke();
+    c.beginPath(); c.moveTo(r * .2, r * .5); c.lineTo(r * .55, r * .3); c.stroke();
+  } else if(o.type === 'car'){
+    c.fillStyle = '#14162b';
+    for(const [dx, dy] of [[-1,-1],[1,-1],[-1,1],[1,1]]) { rr(c, dx * w / 2 - 3, dy * h * .3 - 7, 6, 14, 2); c.fill(); }
+    c.fillStyle = o.color; rr(c, -w / 2, -h / 2, w, h, 9); c.fill(); c.stroke();
+    c.fillStyle = '#9fd8ff'; rr(c, -w / 2 + 5, h * .08, w - 10, h * .2, 4); c.fill(); c.stroke();   // pare-brise (devant = en bas)
+    c.fillStyle = '#ffffff55'; rr(c, -w / 2 + 6, -h * .25, w - 12, h * .3, 4); c.fill();
+    c.fillStyle = '#fff6a8'; c.beginPath(); c.arc(-w / 2 + 6, h / 2 - 4, 3.5, 0, 7); c.arc(w / 2 - 6, h / 2 - 4, 3.5, 0, 7); c.fill();
+  } else {
+    const moto = o.type === 'moto';
+    c.strokeStyle = '#14162b'; c.lineWidth = moto ? 7 : 3;
+    c.beginPath(); c.moveTo(0, -h / 2); c.lineTo(0, h / 2); c.stroke();
+    if(!moto){ c.lineWidth = 2; c.beginPath(); c.moveTo(-8, h * .28); c.lineTo(8, h * .28); c.stroke(); }
+    else { c.fillStyle = '#fff6a8'; c.beginPath(); c.arc(0, h / 2, 3.5, 0, 7); c.fill(); c.lineWidth = 2; c.stroke(); }
+    c.lineWidth = 2.5; c.fillStyle = o.rider;
+    c.beginPath(); c.ellipse(0, -2, moto ? 11 : 9, 7, 0, 0, 7); c.fill(); c.stroke();               // épaules
+    c.fillStyle = moto ? o.color : '#ffd23f';
+    c.beginPath(); c.arc(0, 4, moto ? 7 : 6, 0, 7); c.fill(); c.stroke();                            // casque
+  }
+  c.restore();
+}
+
+// ================= Canvas, géométrie =================
+const cv = $('cv'), ctx = cv.getContext('2d');
+const G = {W: 360, H: 560, side: 50, lw: 65, RY: 480, dpr: 1};
+function resize(){
+  const r = $('stage').getBoundingClientRect();
+  G.dpr = Math.min(3, window.devicePixelRatio || 1);
+  G.W = Math.max(200, r.width); G.H = Math.max(200, r.height);
+  cv.width = Math.round(G.W * G.dpr); cv.height = Math.round(G.H * G.dpr);
+  G.side = Math.max(40, G.W * .14); G.lw = (G.W - 2 * G.side) / LANES; G.RY = G.H - 64;
+}
+window.addEventListener('resize', resize);
+const laneX = l => G.side + G.lw * (l + .5);
+
+// ================= État =================
+let S = null, you = 0, curGame = null, mode = 'create';
+let myChar = +(WG.store('wg_runner') || 0) % CHARS.length;
+let W = null, R = null; // monde (route) et course en cours
+let oppNet = null;
+
+function hash(n){ n = Math.imul(n ^ 0x9e3779b9, 0x85ebca6b); n ^= n >>> 13; n = Math.imul(n, 0xc2b2ae35); return (n ^ (n >>> 16)) >>> 0; }
+
+function setupRace(st){
+  W = buildWorld(st.seed);
+  const opp = 1 - you;
+  const myLane = you === 0 ? 1 : 2, oppLane = opp === 0 ? 1 : 2;
+  const me = makeRunner(st.pos[you].l ?? myLane, st.pos[you].d);
+  const o = makeRunner(st.pos[opp].l ?? oppLane, st.pos[opp].d);
+  const start = performance.now() + (st.startAt - st.serverNow);
+  const t = (performance.now() - start) / 1000;
+  // reprise après rechargement : les animaux déjà passés ne retraversent pas
+  for(const rn of [me, o]) W.animals.forEach((a, i) => { if(a.A < rn.d) rn.animals.set(i, t - 30); });
+  R = {start, me, opp: o, bot: st.bot, frozen: st.phase === 'over', lastSend: 0, lastBotSend: 0, fx: [], ended: false};
+  oppNet = st.bot ? null : {d: st.pos[opp].d, l: o.lane, j: -1, h: 0, at: performance.now()};
+}
+
+// ================= Menu =================
+function buildCharPicker(box, mini){
+  box.innerHTML = '';
+  CHARS.forEach((C, i) => {
+    const b = document.createElement('button'); b.className = 'char'; b.dataset.c = i;
+    const cn = document.createElement('canvas'); cn.width = 156; cn.height = 192;
+    const c = cn.getContext('2d'); drawRunner(c, 78, 128, i, 1.2, 0, {scale: 3});
+    b.appendChild(cn); const n = document.createElement('b'); n.textContent = C.name; b.appendChild(n);
+    b.onclick = () => { myChar = i; WG.store('wg_runner', String(i)); markChars();
+      if(mini && S && S.phase === 'over') WG.send({type:'pick', c: i}); };
+    box.appendChild(b);
+  });
+  markChars();
+}
+function markChars(){ document.querySelectorAll('.char').forEach(b => b.classList.toggle('on', +b.dataset.c === myChar)); }
+buildCharPicker($('chars'), false); buildCharPicker($('chars2'), true);
+// redessine les persos une fois la police chargée (au cas où)
+setTimeout(() => { buildCharPicker($('chars'), false); buildCharPicker($('chars2'), true); }, 400);
+
+function setMode(m){
+  mode = m;
+  ['create', 'join', 'bot'].forEach(k => $('tab-' + k).classList.toggle('on', m === k));
+  $('code-help').textContent = m === 'create' ? 'Choisis un code à 4 chiffres et donne-le à ton adversaire.'
+    : m === 'join' ? 'Tape le code que ton adversaire t\'a donné.' : 'Fais la course contre l\'ordi. Choisis son niveau :';
+  $('dice').classList.toggle('hidden', m !== 'create');
+  $('coderow').classList.toggle('hidden', m === 'bot');
+  $('levels').classList.toggle('hidden', m !== 'bot');
+  hide('lobby-err');
+}
+let botLevel = WG.store('wg_level') || 'moyen';
+function showLevel(){ document.querySelectorAll('#levels button').forEach(b => b.classList.toggle('on', b.dataset.l === botLevel)); }
+document.querySelectorAll('#levels button').forEach(b => b.onclick = () => { botLevel = b.dataset.l; WG.store('wg_level', botLevel); showLevel(); });
+showLevel();
+function lobbyError(msg){ $('lobby-err').textContent = msg; show('lobby-err'); }
+function showScreen(id){ ['s-lobby','s-wait','s-game'].forEach(s => s === id ? show(s) : hide(s)); if(id === 's-game') resize(); }
+function showLobby(msg){
+  hide('over'); hide('rules'); showScreen('s-lobby'); $('go').disabled = false; $('go').textContent = 'START';
+  R = null; setMode(mode); if(msg) lobbyError(msg);
+}
+function start(code, m){
+  S = null; curGame = null; R = null;
+  $('over').dataset.key = '';
+  $('bigcode').textContent = code || '····';
+  $('go').disabled = true; $('go').textContent = 'Connexion…';
+  WG.connect({ game: 'course', room: code, mode: m, level: botLevel, onState, onMessage, onError: msg => showLobby(msg) });
+}
+$('name').value = WG.name();
+$('tab-create').onclick = () => setMode('create');
+$('tab-join').onclick = () => { setMode('join'); $('code').value = ''; $('code').focus(); };
+$('tab-bot').onclick = () => setMode('bot');
+$('dice').onclick = () => { $('code').value = WG.randomCode(); hide('lobby-err'); };
+$('code').addEventListener('input', () => { $('code').value = $('code').value.replace(/\D/g, '').slice(0, 4); hide('lobby-err'); });
+$('code').addEventListener('keydown', e => { if(e.key === 'Enter') $('go').click(); });
+$('go').onclick = () => {
+  const n = $('name').value.trim(), c = $('code').value;
+  if(!n) return lobbyError('Choisis d\'abord un pseudo');
+  if(mode === 'bot'){ WG.setName(n); return start(null, 'bot'); }
+  if(!/^\d{4}$/.test(c)) return lobbyError('Le code doit faire 4 chiffres');
+  WG.setName(n); start(c, mode);
+};
+$('cancel').onclick = () => { WG.leave(); showLobby(); };
+$('quit').onclick = () => { if(confirm('Quitter la partie ?')){ WG.leave(); showLobby(); } };
+$('share').onclick = () => WG.share($('share'), 'COURSE FOLLE 🏃');
+$('rulesBtn').onclick = () => show('rules');
+$('rematchBtn').onclick = () => { WG.send({type:'rematch'}); $('rematchBtn').disabled = true; };
+
+// ================= Réception =================
+function onState(st){
+  $('go').disabled = false;
+  you = st.you; S = st;
+  const opp = 1 - you;
+  if(st.picks[you] === null) WG.send({type:'pick', c: myChar});   // mon perso (aussi après un rechargement)
+  if(!st.names[opp] || st.phase === 'lobby'){
+    if(st.bot) return;                        // contre l'ordi : la course démarre tout de suite
+    hide('over'); R = null; curGame = null; showScreen('s-wait');
+    $('bigcode').textContent = new URLSearchParams(location.search).get('room') || '····';
+    return;
+  }
+  if($('s-game').classList.contains('hidden')) showScreen('s-game');
+  if(st.gameNo !== curGame){ curGame = st.gameNo; $('over').dataset.key = ''; hide('over'); setupRace(st); }
+  $('score').textContent = `${st.names[you]} ${st.score[you]} – ${st.score[opp]} ${st.names[opp]}`;
+  if(st.phase === 'over' && R){
+    if(!R.frozen){ R.frozen = true; if(st.winner !== you) addFx(`${st.names[opp]} a gagné !`, null, '#fff', 30); }
+    showOver();
+  }
+}
+function onMessage(m){
+  if(m.type === 'opp' && R && !R.bot) oppNet = {d: m.d, l: m.l, j: m.j, h: m.h, at: performance.now()};
+}
+
+// ================= Commandes =================
+function act(kind){
+  if(!R || R.frozen) return;
+  const t = (performance.now() - R.start) / 1000; if(t < 0) return;
+  if(kind === 'jump'){ if(tryJump(R.me)) WG.vibrate(10); }
+  else if(!tryMove(R.me, kind === 'left' ? -1 : 1) && R.me.lock) WG.vibrate(30);
+}
+function bindBtn(id, kind){
+  const b = $(id);
+  b.addEventListener('pointerdown', e => { e.preventDefault(); b.classList.add('press'); act(kind); });
+  ['pointerup','pointerleave','pointercancel'].forEach(ev => b.addEventListener(ev, () => b.classList.remove('press')));
+  b.addEventListener('contextmenu', e => e.preventDefault());
+}
+bindBtn('bLeft', 'left'); bindBtn('bJump', 'jump'); bindBtn('bRight', 'right');
+document.addEventListener('keydown', e => {
+  if($('s-game').classList.contains('hidden')) return;
+  if(e.key === 'ArrowLeft') act('left'); else if(e.key === 'ArrowRight') act('right');
+  else if(e.key === 'ArrowUp' || e.key === ' '){ e.preventDefault(); act('jump'); }
+});
+// glisser sur la piste : gauche / droite ; toucher ou glisser vers le haut : sauter
+let sw = null;
+$('stage').addEventListener('pointerdown', e => { sw = {x: e.clientX, y: e.clientY, done: false}; });
+$('stage').addEventListener('pointermove', e => {
+  if(!sw || sw.done) return;
+  const dx = e.clientX - sw.x, dy = e.clientY - sw.y;
+  if(Math.abs(dx) > 28 && Math.abs(dx) > Math.abs(dy)){ act(dx < 0 ? 'left' : 'right'); sw.done = true; }
+  else if(dy < -28){ act('jump'); sw.done = true; }
+});
+$('stage').addEventListener('pointerup', e => {
+  if(sw && !sw.done && Math.abs(e.clientX - sw.x) < 14 && Math.abs(e.clientY - sw.y) < 14) act('jump');
+  sw = null;
+});
+
+// ================= Boucle =================
+function addFx(txt, x, col, size){ if(R) R.fx.push({txt, x, col, size: size || 30, t0: performance.now()}); }
+let last = performance.now();
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now;
+  if(!R || $('s-game').classList.contains('hidden')) return;
+  const t = (now - R.start) / 1000;
+  if(t > 0 && !R.frozen){
+    stepRunner(R.me, dt, t, true);
+    if(R.bot){ botThink(R.opp, t, R.bot); stepRunner(R.opp, dt, t, false); }
+    if(now - R.lastSend > 100){
+      R.lastSend = now;
+      WG.send({type:'pos', d: Math.round(R.me.d), l: R.me.lane, j: +R.me.jumpT.toFixed(2), h: R.me.stumble > 0 ? 1 : 0});
+    }
+    if(R.bot && now - R.lastBotSend > 500){ R.lastBotSend = now; WG.send({type:'pos', bot: 1, d: Math.round(R.opp.d), l: R.opp.lane}); }
+  } else if(t > 0) { R.me.run += dt * .25; }
+  $('pad').classList.toggle('lock', !!R.me.lock && !R.frozen);
+  draw(t, now);
+}
+requestAnimationFrame(loop);
+
+// État affiché de l'adversaire (ordi local, ou humain extrapolé entre deux messages)
+function oppView(now){
+  if(R.bot){ const o = R.opp; return {d: o.d, lx: o.lx, air: airOf(o), stumble: o.stumble > 0, run: o.run}; }
+  const o = R.opp, n = oppNet;
+  if(n){
+    const el = (now - R.start) / 1000 > 0 ? Math.min(.5, (now - n.at) / 1000) : 0;   // pas d'extrapolation avant le GO
+    o.d = R.frozen ? n.d : Math.min(L, n.d + speedAt(n.d) * (n.h ? .35 : 1) * el);
+    o.lane = n.l; o.lx += Math.max(-.2, Math.min(.2, o.lane - o.lx));
+    o.jumpT = n.j >= 0 && n.j + el < JUMP ? n.j + el : -1;
+    o.stumble = n.h ? 1 : 0;
+    if(!R.frozen) o.run += .016 * speedAt(o.d) / 300;
+  }
+  return {d: o.d, lx: o.lx, air: airOf(o), stumble: o.stumble > 0, run: o.run};
+}
+
+function draw(t, now){
+  const c = ctx, me = R.me, cam = me.d, {W: Wd, H, side, lw, RY} = G;
+  const sy = wy => RY - (wy - cam);
+  c.setTransform(G.dpr, 0, 0, G.dpr, 0, 0);
+  // herbe
+  c.fillStyle = '#4fbf55'; c.fillRect(0, 0, Wd, H);
+  c.fillStyle = '#5ccb61';
+  const band = 70, k0 = Math.floor((cam - (H - RY)) / band), k1 = Math.ceil((cam + RY) / band);
+  for(let k = k0; k <= k1; k++) if(k % 2 === 0) c.fillRect(0, sy((k + 1) * band), Wd, band);
+  // route
+  c.fillStyle = '#5d6178'; c.fillRect(side, 0, Wd - 2 * side, H);
+  // bordures rouge / blanc
+  const cb = 36, c0 = Math.floor((cam - (H - RY)) / cb), c1 = Math.ceil((cam + RY) / cb);
+  for(let k = c0; k <= c1; k++){
+    c.fillStyle = k % 2 ? '#ff4d4d' : '#fff';
+    c.fillRect(side - 6, sy((k + 1) * cb), 6, cb); c.fillRect(Wd - side, sy((k + 1) * cb), 6, cb);
+  }
+  // pointillés des couloirs
+  c.fillStyle = '#ffffffaa';
+  const dp = 60, d0 = Math.floor((cam - (H - RY)) / dp), d1 = Math.ceil((cam + RY) / dp);
+  for(let l = 1; l < LANES; l++) for(let k = d0; k <= d1; k++) c.fillRect(side + lw * l - 2, sy(k * dp + 28), 4, 28);
+  // ligne de départ et d'arrivée
+  for(const [wy, chk] of [[0, false], [L, true]]){
+    const y = sy(wy); if(y < -30 || y > H + 30) continue;
+    if(chk){ const n = 14, s = (Wd - 2 * side) / n;
+      for(let i = 0; i < n; i++) for(let j = 0; j < 2; j++){ c.fillStyle = (i + j) % 2 ? '#14162b' : '#fff'; c.fillRect(side + i * s, y - 2 * s + j * s, s, s); }
+      c.font = '28px ' + EMOJI_FONT; c.textAlign = 'center'; c.fillText('🏁', side / 2, y); c.fillText('🏁', Wd - side / 2, y);
+    } else { c.fillStyle = '#fff'; c.fillRect(side, y - 3, Wd - 2 * side, 6); }
+  }
+  // décor sur les bas-côtés
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  const db = 95, e0 = Math.floor((cam - (H - RY) - 60) / db), e1 = Math.ceil((cam + RY + 60) / db);
+  for(let k = e0; k <= e1; k++){
+    const h = hash(k + 7); if(h % 5 === 0) continue;
+    const left = h & 1, f = ((h >>> 3) % 100) / 100, sz = 20 + (h >>> 9) % 12;
+    c.font = sz + 'px ' + EMOJI_FONT;
+    c.fillText(DECOR[(h >>> 5) % DECOR.length], left ? side * (.22 + .5 * f) : Wd - side * (.22 + .5 * f), sy(k * db + ((h >>> 12) % 60)));
+  }
+  // obstacles
+  for(const o of W.obs){
+    const y = sy(obsY(o, Math.max(0, t))); if(y < -90 || y > H + 90) continue;
+    drawObstacle(c, o, laneX(o.lane), y, lw);
+  }
+  // animaux (ceux de ma course)
+  W.animals.forEach((a, i) => {
+    let x, y, flip = a.dir > 0, crossing = false;
+    if(me.animals.has(i)){
+      const at = t - me.animals.get(i); if(animalGone(a, at)) return;
+      x = G.side + lw * (animalX(a, at) + .5); y = RY - 2; crossing = true;
+    } else {
+      y = sy(a.A); if(y < -60) return;
+      x = G.side + lw * (animalX(a, 0) + .5);
+    }
+    c.save(); c.translate(x, y + (crossing ? 0 : Math.sin(now / 180 + i) * 2));
+    c.fillStyle = '#00000044'; c.beginPath(); c.ellipse(0, 17, 18, 6, 0, 0, 7); c.fill();
+    c.fillStyle = crossing ? '#ffd23f99' : '#ffffff66'; c.beginPath(); c.arc(0, 0, 24, 0, 7); c.fill();  // halo : bien visible
+    if(flip) c.scale(-1, 1);
+    c.font = '40px ' + EMOJI_FONT; c.fillText(a.e, 0, 2);
+    c.restore();
+    if(!crossing && a.A - cam < 300){
+      c.font = '900 22px Nunito, sans-serif'; c.fillStyle = '#ffd23f'; c.strokeStyle = '#14162b'; c.lineWidth = 4;
+      const by = y - 32 + Math.sin(now / 90) * 3; c.strokeText('!', x, by); c.fillText('!', x, by);
+    }
+  });
+  // coureurs : l'adversaire un poil plus haut (pas sur le même plan), puis moi par-dessus
+  const ov = oppView(now), oppIdx = 1 - you;
+  const oy = sy(ov.d) - 12;
+  if(oy > -40 && oy < H + 40){
+    drawRunner(c, laneX(ov.lx), oy, S.picks[oppIdx], ov.run, ov.air, {stumble: ov.stumble, alpha: .92});
+    label(c, laneX(ov.lx), oy - 46 - ov.air * 30, S.names[oppIdx], '#ffffffdd');
+  }
+  const blink = me.inv > 0 && !me.done && Math.floor(now / 90) % 2 === 0;
+  drawRunner(c, laneX(me.lx), RY, myChar, me.run, airOf(me), {stumble: me.stumble > 0, alpha: blink ? .35 : 1});
+  c.fillStyle = '#ffd23f'; c.strokeStyle = '#14162b'; c.lineWidth = 2;
+  const ay = RY - 52 - airOf(me) * 30, ax = laneX(me.lx);
+  c.beginPath(); c.moveTo(ax - 6, ay); c.lineTo(ax + 6, ay); c.lineTo(ax, ay + 8); c.closePath(); c.fill(); c.stroke();
+  // adversaire hors écran : flèche avec l'écart
+  const gap = meters(ov.d - cam);
+  if(oy < 30 || oy > H - 10){
+    const up = oy < 30, x = laneX(ov.lx), y = up ? 46 : H - 22;
+    c.font = '900 13px Nunito, sans-serif';
+    const txt = (up ? '▲ ' : '▼ ') + S.names[oppIdx] + ' ' + (up ? '+' : '−') + Math.abs(gap) + ' m';
+    const tw = c.measureText(txt).width + 14, bx = Math.min(Math.max(x, tw / 2 + 4), Wd - tw / 2 - 4);
+    c.fillStyle = '#14162bdd'; rr(c, bx - tw / 2, y - 11, tw, 22, 11); c.fill();
+    c.fillStyle = '#fff'; c.fillText(txt, bx, y + 1);
+  }
+  // barre de progression
+  const px0 = 12, px1 = Wd - 34, py = 16;
+  c.fillStyle = '#14162bcc'; rr(c, px0 - 4, py - 8, px1 - px0 + 8, 16, 8); c.fill();
+  c.font = '18px ' + EMOJI_FONT; c.fillText('🏁', Wd - 18, py);
+  const dot = (d, col, r) => { c.fillStyle = col; c.strokeStyle = '#14162b'; c.lineWidth = 2; c.beginPath();
+    c.arc(px0 + (px1 - px0) * Math.min(1, d / L), py, r, 0, 7); c.fill(); c.stroke(); };
+  dot(ov.d, CHARS[S.picks[oppIdx]] ? CHARS[S.picks[oppIdx]].shirt : '#ccc', 6);
+  dot(cam, CHARS[myChar].shirt, 7.5);
+  c.font = '900 14px Nunito, sans-serif'; c.fillStyle = '#fff'; c.strokeStyle = '#14162b'; c.lineWidth = 3;
+  const rest = `${meters(L - cam)} m`; c.textAlign = 'left'; c.strokeText(rest, 10, 40); c.fillText(rest, 10, 40); c.textAlign = 'center';
+  // compte à rebours
+  if(t < .8){
+    const txt = t < -3 ? 'Prêts ?' : t < 0 ? String(Math.ceil(-t)) : 'GO !';
+    const fr = t < 0 ? (-t) % 1 : t / .8;
+    c.font = `${t < -3 ? 46 : 92}px Luckiest, sans-serif`;
+    c.globalAlpha = t >= 0 ? 1 - fr : 1;
+    c.fillStyle = t >= 0 ? '#ffd23f' : '#fff'; c.strokeStyle = '#14162b'; c.lineWidth = 8;
+    c.strokeText(txt, Wd / 2, H * .38); c.fillText(txt, Wd / 2, H * .38);
+    c.globalAlpha = 1;
+  }
+  // textes flottants
+  R.fx = R.fx.filter(f => now - f.t0 < 1300);
+  R.fx.forEach((f, idx) => {
+    const u = (now - f.t0) / 1300;
+    c.globalAlpha = 1 - u * u; c.font = `${f.size}px Luckiest, sans-serif`;
+    c.fillStyle = f.col; c.strokeStyle = '#14162b'; c.lineWidth = 6;
+    const y = H * .45 - u * 60 + idx * 44; c.strokeText(f.txt, Wd / 2, y); c.fillText(f.txt, Wd / 2, y);
+  });
+  c.globalAlpha = 1;
+}
+function label(c, x, y, txt, bg){
+  c.font = '900 12px Nunito, sans-serif'; const w = c.measureText(txt).width + 12;
+  c.fillStyle = bg; rr(c, x - w / 2, y - 9, w, 18, 9); c.fill();
+  c.fillStyle = '#14162b'; c.fillText(txt, x, y + 1);
+}
+
+// ================= Fin de manche =================
+function showOver(){
+  const key = S.gameNo + ':' + S.winner;
+  if($('over').dataset.key === key){ updateRematch(); return; }
+  $('over').dataset.key = key;
+  updateRematch();
+  const opp = 1 - you, w = S.winner, me = R.me;
+  setTimeout(() => {
+    if(!S || S.phase !== 'over' || S.gameNo + ':' + S.winner !== key) return;
+    const ft = (S.finish[w] || 0).toFixed(1).replace('.', ',');
+    if(w === you){
+      $('over-emoji').textContent = '🏆'; $('over-title').textContent = 'Victoire !';
+      const lead = meters(L - (R ? R.opp.d : 0));
+      $('over-text').textContent = `Ligne franchie en ${ft} s avec ${S.hits[w]} choc${S.hits[w] > 1 ? 's' : ''}. ${S.names[opp]} était encore à ${lead} m !`;
+      confetti();
+    } else {
+      $('over-emoji').textContent = '😵'; $('over-title').textContent = 'Battu !';
+      $('over-text').textContent = `${S.names[opp]} a passé la ligne en ${ft} s. Il te restait ${meters(L - me.d)} m (${me.hits} choc${me.hits > 1 ? 's' : ''}). Revanche ?`;
+    }
+    markChars(); show('over');
+  }, 1500);
+}
+function updateRematch(){
+  const opp = 1 - you;
+  $('rematchInfo').textContent = S.rematch[you] ? `En attente de ${S.names[opp]}…` : (S.rematch[opp] ? `${S.names[opp]} veut sa revanche !` : '');
+  $('rematchBtn').disabled = !!S.rematch[you];
+}
+function confetti(){
+  const e = ['🎉', '⭐', '🏁', '🏃', '✨'];
+  for(let i = 0; i < 32; i++){
+    const d = document.createElement('div'); d.className = 'confetti'; d.textContent = e[i % e.length];
+    d.style.left = Math.random() * 100 + 'vw';
+    d.style.animationDuration = (1.8 + Math.random() * 1.8) + 's';
+    d.style.animationDelay = Math.random() * .6 + 's';
+    document.body.appendChild(d); setTimeout(() => d.remove(), 4500);
+  }
+}
+
+// ================= Démarrage =================
+setMode('create');
+const linkRoom = WG.urlRoom();
+if(linkRoom && WG.name()) start(linkRoom);
+else if(linkRoom){ setMode('join'); $('code').value = linkRoom; }
+</script>
+</body>
+</html>
