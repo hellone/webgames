@@ -173,6 +173,7 @@ wss.on('connection', (ws) => {
   ws.on('message', (raw) => {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
+    if (!msg || typeof msg !== 'object') return; // « null », un nombre… : ignoré (sinon le serveur plantait)
 
     if (msg.type === 'join') {
       // mode : 'create' (je crée la partie), 'join' (je rejoins), absent = reconnexion (page rechargée)
