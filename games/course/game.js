@@ -4,6 +4,7 @@
 // Le premier « finish » reçu gagne la manche.
 
 const CHARS = 3; // nombre de personnages au choix
+const THEMES = ['autoroute', 'foret', 'savane']; // décor tiré au hasard à chaque manche
 const rnd = (n) => Math.floor(Math.random() * n);
 const emptyPos = () => [{ d: 0, l: null }, { d: 0, l: null }];
 
@@ -12,6 +13,7 @@ function fresh(score = [0, 0], gameNo = 0, picks = [null, null]) {
     phase: 'lobby',          // lobby (on attend les 2 joueurs + leurs persos) → race → over
     picks,                   // personnage choisi par chaque joueur (0..2)
     seed: 0,
+    theme: null,             // autoroute | foret | savane
     startAt: 0,              // heure serveur du « GO »
     finish: [null, null],    // temps d'arrivée (s)
     hits: [0, 0],            // chocs pendant la course
@@ -26,6 +28,8 @@ function fresh(score = [0, 0], gameNo = 0, picks = [null, null]) {
 function startRace(m) {
   m.phase = 'race';
   m.seed = 1 + rnd(2147483646);
+  const others = THEMES.filter((t) => t !== m.theme);          // jamais deux fois de suite le même décor
+  m.theme = others[rnd(others.length)];
   m.startAt = Date.now() + 4200; // laisse le temps au compte à rebours 3, 2, 1
   m.finish = [null, null];
   m.hits = [0, 0];
@@ -38,7 +42,7 @@ function startRace(m) {
 module.exports = {
   name: 'Course Folle',
   emoji: '🏃',
-  description: 'Course à 2 : esquive voitures, motos et rochers, saute par-dessus les animaux. Premier à la ligne !',
+  description: 'Course à 2 sur autoroute, en forêt ou dans la savane : esquive ce qui fonce sur toi, saute par-dessus les animaux !',
   color: '#22b573',
   maxPlayers: 2,
 
@@ -104,7 +108,7 @@ module.exports = {
 
   view(m, slot, room) {
     return {
-      phase: m.phase, picks: m.picks, seed: m.seed, startAt: m.startAt, serverNow: Date.now(),
+      phase: m.phase, picks: m.picks, seed: m.seed, theme: m.theme, startAt: m.startAt, serverNow: Date.now(),
       finish: m.finish, hits: m.hits, winner: m.winner, rematch: m.rematch, score: m.score, gameNo: m.gameNo,
       pos: m.pos, bot: room && room.bot ? room.bot.level : null,
     };
