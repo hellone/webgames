@@ -79,11 +79,14 @@
   #timer{font-family:"Luckiest",sans-serif;color:#fff;-webkit-text-stroke:2px var(--ink);paint-order:stroke fill;font-size:1.25rem;padding-top:3px}
   #stage{position:relative;flex:1;min-height:0;touch-action:none;display:flex;align-items:center;justify-content:center}
   #cv{display:block;touch-action:none}
-  #pad{display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(2,52px);gap:6px;justify-content:center;margin-top:8px;touch-action:none}
-  #pad button{font-size:1.7rem;border-radius:16px;background:#fff;box-shadow:0 4px 0 var(--ink);padding:0;
+  #pad{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;touch-action:none}
+  #pad button{height:84px;font-size:2.6rem;border-radius:20px;box-shadow:0 5px 0 var(--ink);padding:0;display:flex;align-items:center;justify-content:center;gap:8px;
+    font-family:"Luckiest",sans-serif;font-weight:normal;
     transition:transform .06s,box-shadow .06s;touch-action:none}
-  #pad button.press{transform:translateY(3px);box-shadow:0 1px 0 var(--ink);background:var(--gold)}
-  #bUp{grid-column:2;grid-row:1} #bLeft{grid-column:1;grid-row:2} #bDown{grid-column:2;grid-row:2} #bRight{grid-column:3;grid-row:2}
+  #pad button.press{transform:translateY(4px);box-shadow:0 1px 0 var(--ink);filter:brightness(1.1)}
+  #pad small{font-size:1.15rem;letter-spacing:.3px}
+  #bL{background:#7cc6ff} #bR{background:#ffb36b}
+  
 
   .overlay{position:fixed;inset:0;background:#0b0c1ccc;display:flex;align-items:center;justify-content:center;padding:18px;z-index:60}
   .modal{background:var(--card);border:3px solid var(--ink);border-radius:22px;padding:18px;max-width:440px;width:100%;
@@ -158,10 +161,8 @@
     </div>
     <div id="stage"><canvas id="cv"></canvas></div>
     <div id="pad">
-      <button id="bUp" aria-label="Haut">⬆️</button>
-      <button id="bLeft" aria-label="Gauche">⬅️</button>
-      <button id="bDown" aria-label="Bas">⬇️</button>
-      <button id="bRight" aria-label="Droite">➡️</button>
+      <button id="bL" aria-label="Tourner à gauche">↺<small>Gauche</small></button>
+      <button id="bR" aria-label="Tourner à droite"><small>Droite</small>↻</button>
     </div>
   </section>
 </div>
@@ -188,7 +189,7 @@
       <li>Au bout de <b>2 minutes</b>, le serpent le plus long gagne.</li>
       <li>🐢 <b>Facile</b> : lent, et on traverse les murs pour ressortir de l'autre côté. 🐍 <b>Normal</b> : plus rapide, murs mortels. 🔥 <b>Expert</b> : très rapide, des rochers, et ça accélère à chaque pomme.</li>
       <li>🎯 <b>Solo</b> : le Snake classique, tout seul. Mange un max de pommes sans te cogner, ça accélère à chaque pomme. Ton record est gardé pour chaque difficulté.</li>
-      <li>Pour tourner : la croix sous le terrain, ou glisse le doigt sur le terrain. Au clavier : les flèches.</li>
+      <li>Pour tourner : les 2 gros boutons <b>↺ Gauche</b> et <b>Droite ↻</b> font tourner le serpent par rapport à sa tête (les petites flèches bleue et orange autour de ta tête montrent où il va aller). Tu peux aussi glisser le doigt sur le terrain dans la direction voulue, ou utiliser les flèches du clavier.</li>
     </ul>
     <button class="big" style="width:100%;margin-top:6px" onclick="hide('rules')">Compris !</button>
   </div>
@@ -326,7 +327,7 @@ function enterGame(){
       if(i === you){ SFX.play(gold ? 'ding' : 'coin'); WG.vibrate(15); } else SFX.play('pop', {v: .5});
     }
     if(lastAlive[i] && !s.alive){
-      const h = s.body[0] || [0, 0];
+      const h = (S.crash && S.crash[i]) || s.body[0] || [0, 0];
       burst(h[0], h[1], [SKINS[i].main, SKINS[i].light, '#ffffff', '#ff9a1f'], 26);
       SFX.play('explode'); flash = 1;
       if(i === you){ WG.vibrate([80, 40, 160]); $('stage').classList.remove('shake'); void $('stage').offsetWidth; $('stage').classList.add('shake'); }
@@ -363,13 +364,20 @@ function turn(d){
   if(S.solo) soloDir(d); else WG.send({type:'dir', d});
   SFX.play('tap', {v: .6});
 }
-function bindBtn(id, d){
+// les 2 gros boutons : tourner à gauche / à droite, par rapport au serpent
+function turnRel(side){
+  if(!S || S.phase !== 'play') return;
+  const s = S.snakes[you]; if(!s || !s.alive) return;
+  if(S.solo) soloTurn(side); else WG.send({type:'turn', side});
+  SFX.play('tap', {v: .6}); WG.vibrate(8);
+}
+function bindBtn(id, side){
   const b = $(id);
-  b.addEventListener('pointerdown', e => { e.preventDefault(); b.classList.add('press'); turn(d); });
+  b.addEventListener('pointerdown', e => { e.preventDefault(); b.classList.add('press'); turnRel(side); });
   ['pointerup','pointerleave','pointercancel'].forEach(ev => b.addEventListener(ev, () => b.classList.remove('press')));
   b.addEventListener('contextmenu', e => e.preventDefault());
 }
-bindBtn('bUp', 'up'); bindBtn('bDown', 'down'); bindBtn('bLeft', 'left'); bindBtn('bRight', 'right');
+bindBtn('bL', 'left'); bindBtn('bR', 'right');
 document.addEventListener('keydown', e => {
   if($('s-game').classList.contains('hidden')) return;
   const d = {ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right', z:'up', s:'down', q:'left', d:'right'}[e.key];
@@ -468,7 +476,7 @@ function lerpBody(i, f){
   for(let k = 0; k < cur.length; k++){
     const a = prev ? (prev[k] || prev[prev.length - 1]) : cur[k], b = cur[k];
     const jump = Math.abs(a[0] - b[0]) > 1 || Math.abs(a[1] - b[1]) > 1;
-    const p = jump || !S.snakes[i].alive ? b : [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+    const p = jump ? b : [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
     pts.push({x: cx(p[0]), y: cy(p[1]), cut: false});
   }
   for(let k = 1; k < pts.length; k++) if(Math.hypot(pts[k].x - pts[k - 1].x, pts[k].y - pts[k - 1].y) > G.cell * 1.6) pts[k].cut = true;
@@ -578,11 +586,27 @@ function frame(now){
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height);
   c.drawImage(boardCv, 0, 0);
   c.setTransform(G.dpr, 0, 0, G.dpr, 0, 0);
-  const f = Math.min(1, (now - tickAt) / (S.tickMs || 120));
+  const f = Math.min(1, (now - tickAt) / ((S.tickMs || 120) * .6));
   const srvNow = Date.now() + offset;
   for(const fd of S.food) drawApple(c, fd, now);
   // le serpent de l'adversaire d'abord, le mien par-dessus
   (S.solo ? [0] : [1 - you, you]).forEach(i => drawSnake(c, i, f, now));
+  // 💥 là où ça a cogné
+  if(S.phase === 'over' && S.crash) S.crash.forEach(cr => { if(!cr) return;
+    const X = cx(Math.max(-.3, Math.min(S.cols - .7, cr[0]))), Y = cy(Math.max(-.3, Math.min(S.rows - .7, cr[1]))), k = 1 + Math.sin(now / 120) * .12;
+    c.font = Math.round(C * 1.3 * k) + 'px ' + EMOJI_FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('💥', X, Y); });
+  // repères des boutons : bleu = tourner à gauche, orange = à droite (par rapport à la tête)
+  const me = S.snakes[you];
+  if(S.phase === 'play' && me && me.alive){
+    const pts = lerpBody(you, f), h = pts[0], d = {up:[0,-1], down:[0,1], left:[-1,0], right:[1,0]}[me.dir];
+    for(const [sg, col] of [[-1, '#7cc6ff'], [1, '#ffb36b']]){
+      const px = d[1] * -sg, py = d[0] * sg;   // gauche = (dy, -dx) ; droite = (-dy, dx)
+      const X = h.x + px * C * .95, Y = h.y + py * C * .95;
+      c.save(); c.globalAlpha = .8; c.translate(X, Y); c.rotate(Math.atan2(py, px));
+      c.fillStyle = col; c.strokeStyle = INK; c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(C * .22, 0); c.lineTo(-C * .1, -C * .16); c.lineTo(-C * .1, C * .16); c.closePath(); c.fill(); c.stroke(); c.restore();
+    }
+  }
   // particules
   parts = parts.filter(p => now - p.t0 < p.life);
   for(const p of parts){ const u = (now - p.t0) / p.life;
@@ -691,6 +715,11 @@ function soloStart(){
   soloTimer = setTimeout(soloLoop, 50);
 }
 function soloStop(){ clearTimeout(soloTimer); soloTimer = null; }
+function soloTurn(side){
+  const s = soloM && soloM.snakes[0]; if(!s || s.queue.length >= 3) return;
+  const T = {left: {up:'left', left:'down', down:'right', right:'up'}, right: {up:'right', right:'down', down:'left', left:'up'}};
+  s.queue.push(T[side][s.queue.length ? s.queue[s.queue.length - 1] : s.dir]);
+}
 function soloDir(d){
   const s = soloM && soloM.snakes[0]; if(!s) return;
   const lastDir = s.queue.length ? s.queue[s.queue.length - 1] : s.dir;

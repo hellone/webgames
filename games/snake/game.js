@@ -12,6 +12,8 @@ const DIFFS = {
 };
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 const OPP = { up: 'down', down: 'up', left: 'right', right: 'left' };
+// tourner à gauche / à droite par rapport à la direction du serpent
+const TURN = { left: { up: 'left', left: 'down', down: 'right', right: 'up' }, right: { up: 'right', right: 'down', down: 'left', left: 'up' } };
 const rnd = (n) => Math.floor(Math.random() * n);
 const key = (x, y) => x + ',' + y;
 
@@ -19,7 +21,7 @@ function fresh(score = [0, 0], gameNo = 0, diff = 'normal') {
   return {
     phase: 'lobby', diff, ready: [false, false],
     snakes: [], food: [], rocks: [], tick: 0, tickMs: DIFFS[diff].ms,
-    startAt: 0, endAt: 0, winner: null, cause: [null, null], rematch: [false, false], score, gameNo,
+    startAt: 0, endAt: 0, winner: null, cause: [null, null], crash: [null, null], rematch: [false, false], score, gameNo,
   };
 }
 
@@ -50,7 +52,7 @@ function newRound(m, ctx) {
   m.gameNo++;
   m.tick = 0;
   m.tickMs = D.ms;
-  m.winner = null; m.cause = [null, null]; m.rematch = [false, false];
+  m.winner = null; m.cause = [null, null]; m.crash = [null, null]; m.rematch = [false, false];
   // départs symétriques : en bas à gauche vers le haut, en haut à droite vers le bas
   m.snakes = [
     { body: [[3, ROWS - 5], [3, ROWS - 4], [3, ROWS - 3], [3, ROWS - 2]], dir: 'up', queue: [], alive: true, grow: 0, eaten: 0 },
@@ -134,7 +136,14 @@ function step(m) {
     if (m.snakes[i].body.slice(1).some(([a, b]) => a === x && b === y)) { dead[i] = true; m.cause[i] = 'self'; return; }
     if (m.snakes[j].body.slice(o ? 1 : 0).some(([a, b]) => a === x && b === y)) { dead[i] = true; m.cause[i] = 'other'; }
   });
-  dead.forEach((d, i) => { if (d) { m.snakes[i].alive = false; m.snakes[i].body.shift(); } }); // la tête reste contre l'obstacle
+  // la case du choc est envoyée aux téléphones, pour montrer exactement où ça a cogné ;
+  // contre un serpent, la tête reste dans la case du choc (deux têtes dans la même case = on les voit se rencontrer)
+  m.crash = heads.map((h, i) => (dead[i] ? h : null));
+  dead.forEach((d, i) => {
+    if (!d) return;
+    m.snakes[i].alive = false;
+    if (m.cause[i] === 'wall' || m.cause[i] === 'rock') m.snakes[i].body.shift(); // la tête reste contre le mur / le rocher
+  });
   // 5. pommes mangées → nouvelles pommes, et ça accélère un peu
   const eatenIdx = [...new Set(ate.filter((a, i) => a >= 0 && !dead[i]))].sort((a, b) => b - a);
   eatenIdx.forEach((a) => {
@@ -225,7 +234,7 @@ function publicView(m) {
     snakes: m.snakes.map((s) => ({ body: s.body, dir: s.dir, alive: s.alive, eaten: s.eaten })),
     food: m.food, rocks: m.rocks, tick: m.tick, tickMs: m.tickMs,
     startAt: m.startAt, endAt: m.endAt, serverNow: Date.now(),
-    winner: m.winner, cause: m.cause, rematch: m.rematch, score: m.score, gameNo: m.gameNo,
+    winner: m.winner, cause: m.cause, crash: m.crash, rematch: m.rematch, score: m.score, gameNo: m.gameNo,
   };
 }
 
@@ -252,6 +261,14 @@ module.exports = {
       if (bot) m.ready[1] = true;
       if (ctx.full && m.ready[0] && m.ready[1]) newRound(m, ctx);
       return true;
+    }
+    // les 2 boutons : tourner à gauche / à droite (par rapport à la dernière direction demandée)
+    if (msg.type === 'turn') {
+      const s = m.snakes[slot];
+      if (m.phase !== 'play' || !s || !s.alive || !TURN[msg.side] || s.queue.length >= 3) return false;
+      const lastDir = s.queue.length ? s.queue[s.queue.length - 1] : s.dir;
+      s.queue.push(TURN[msg.side][lastDir]);
+      return false;
     }
     if (msg.type === 'dir') {
       const s = m.snakes[slot];
