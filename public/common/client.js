@@ -97,8 +97,54 @@
     } catch (e) { prompt('Copie ce lien :', url); }
   }
 
+  // ---------- Tableau des scores (commun à tous les jeux) ----------
+  // WG.score(names, score, you) : « Papa 2 – 1 Tesnym » en haut (élément #score) et en grand sur l'écran de fin (#over)
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function scoreCss() {
+    if (document.getElementById('wg-score-css')) return;
+    const st = document.createElement('style'); st.id = 'wg-score-css';
+    st.textContent = `
+      .wg-sb{display:flex!important;align-items:center;justify-content:center;gap:5px;flex:1;min-width:0;padding:4px 8px 2px!important;
+        font-family:"Nunito",system-ui,sans-serif!important;background:#fff;border:2px solid #14162b;border-radius:12px;color:#14162b;line-height:1.1}
+      .wg-sb .n{font-weight:1000;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}
+      .wg-sb .p{font-family:"Luckiest",sans-serif;font-size:1.3rem;padding-top:3px;min-width:.8em;text-align:center}
+      .wg-sb .me{color:#1769c9} .wg-sb .op{color:#c62f66} .wg-sb i{font-style:normal;font-weight:900;opacity:.5}
+      .wg-sb .lead{background:#ffd23f;border-radius:6px;padding:0 3px}
+      .wg-board{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;background:#fff6cc;border:3px solid #14162b;
+        border-radius:16px;padding:10px 8px 8px;margin:4px 0 12px;box-shadow:0 4px 0 #0005;color:#14162b}
+      .wg-board .t{grid-column:1/-1;font-weight:1000;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;opacity:.6;text-align:center}
+      .wg-board .c{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+      .wg-board .n{font-weight:1000;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+      .wg-board .p{font-family:"Luckiest",sans-serif;font-size:2.6rem;line-height:1;padding-top:4px}
+      .wg-board .me .n,.wg-board .me .p{color:#1769c9} .wg-board .op .n,.wg-board .op .p{color:#c62f66}
+      .wg-board .vs{font-family:"Luckiest",sans-serif;font-size:1.2rem;opacity:.5}`;
+    document.head.appendChild(st);
+  }
+  function score(names, sc, you) {
+    if (!names || !sc) return;
+    scoreCss();
+    const opp = 1 - you, me = names[you] || 'Toi', op = names[opp] || '…', a = sc[you] || 0, b = sc[opp] || 0;
+    const crown = (x, y) => (x > y ? ' 👑' : '');
+    const el = document.getElementById('score');
+    if (el) {
+      el.classList.add('wg-sb');
+      el.innerHTML = `<span class="n me">${esc(me)}${crown(a, b)}</span><span class="p me${a > b ? ' lead' : ''}">${a}</span><i>–</i>` +
+        `<span class="p op${b > a ? ' lead' : ''}">${b}</span><span class="n op">${esc(op)}${crown(b, a)}</span>`;
+      const rb = document.getElementById('rulesBtn');
+      if (rb && rb.textContent.trim() === '? Règles') rb.textContent = '❓';   // plus de place pour les prénoms
+    }
+    const modal = document.querySelector('#over .modal'), btn = document.getElementById('rematchBtn');
+    if (modal && btn) {
+      let bd = modal.querySelector('.wg-board');
+      if (!bd) { bd = document.createElement('div'); bd.className = 'wg-board'; btn.parentNode.insertBefore(bd, btn); }
+      bd.innerHTML = `<div class="t">🏆 Tableau des scores</div>` +
+        `<div class="c me"><span class="n">${esc(me)} (toi)${crown(a, b)}</span><span class="p">${a}</span></div><span class="vs">–</span>` +
+        `<div class="c op"><span class="n">${esc(op)}${crown(b, a)}</span><span class="p">${b}</span></div>`;
+    }
+  }
+
   window.WG = {
-    pid, connect, send, leave, share, store, urlRoom,
+    pid, connect, send, leave, share, store, urlRoom, score,
     randomCode: () => String(Math.floor(Math.random() * 10000)).padStart(4, '0'),
     link: () => location.href,
     name: () => store('wg_name') || '',

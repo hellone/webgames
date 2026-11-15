@@ -337,6 +337,7 @@ function enterGame(){
   lastFood = S.food.map(f => ({...f}));
   if(S.solo){
     const best = Math.max(bestOf(S.diff), S.points);
+    $('score').classList.remove('wg-sb'); document.querySelectorAll('#over .wg-board').forEach(e => e.remove());
     $('score').textContent = `Solo · ${{facile:'🐢 Facile', normal:'🐍 Normal', expert:'🔥 Expert'}[S.diff]}`;
     $('dot-me').style.background = SKINS[0].main; $('nm-me').textContent = S.names[0] + ' (toi)';
     $('len-me').textContent = S.snakes[0].body.length + (S.snakes[0].alive ? 0 : 1); $('pc-me').classList.toggle('dead', !S.snakes[0].alive);
@@ -344,7 +345,7 @@ function enterGame(){
     $('timer').textContent = '🍎 ' + S.points; $('timer').style.color = '#fff';
     return;
   }
-  $('score').textContent = `Toi ${S.score[you]} – ${S.score[opp]}`;
+  WG.score(S.names, S.score, you);
   for(const [k, p] of [['me', you], ['opp', opp]]){
     $('dot-' + k).style.background = SKINS[p].main;
     $('nm-' + k).textContent = (S.names[p] || '…') + (k === 'me' ? ' (toi)' : (S.connected && !S.connected[p] ? ' 📴' : ''));

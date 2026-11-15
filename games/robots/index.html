@@ -401,7 +401,7 @@ function countDone(player, done){ return (done || S.done[player]).filter(Boolean
 function render(){
   if(!S) return;
   const opp = 1 - you;
-  $('score').textContent = S.score[you] + ' – ' + S.score[opp];
+  WG.score(S.names, S.score, you);
   $('n-me').innerHTML = esc(S.names[you]) + ' (toi)' + (S.winner === null && S.turn === you ? '<span class="tag">À toi</span>' : '');
   $('n-opp').innerHTML = esc(S.names[opp]) + (!S.connected[opp] ? ' 📴' : (S.winner === null && S.turn === opp ? '<span class="tag">Joue</span>' : ''));
   for(const [side, p] of [['me', you], ['opp', opp]]){

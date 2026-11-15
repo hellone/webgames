@@ -489,7 +489,7 @@ function renderAll(){
 function renderUI(){
   if(!S || !G) return;
   const opp = 1 - you;
-  $('score').textContent = S.score[you] + ' – ' + S.score[opp];
+  WG.score(S.names, S.score, you);
   for(const [side, t] of [['me', you], ['opp', opp]]){
     $('n-' + side).textContent = TEAM[t].emoji + ' ' + S.names[t] + (side === 'me' ? ' (toi)' : '');
     $('dot-' + side).style.background = TEAM[t].color;

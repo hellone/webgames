@@ -355,13 +355,13 @@ function renderFighters(st, hpOverride, seedsOverride, broken){
   $('h-opp').textContent = hearts(hp[opp], bk[opp]);
   $('g-me').innerHTML = seeds(sd[me]);
   $('g-opp').innerHTML = seeds(sd[opp]);
-  $('score').textContent = st.score[me] + ' – ' + st.score[opp];
+  WG.score(st.names, st.score, me);
 }
 
 function render(){
   const st = S, me = st.you, opp = 1 - me;
   renderFighters(st);
-  $('round').textContent = 'Round ' + st.round;
+  $('round').textContent = 'R' + st.round; $('round').title = 'Round ' + st.round;   // court : laisse la place aux prénoms du score
 
   const tag = $('t-opp');
   if(!st.connected[opp]){ tag.textContent='📴'; tag.className='tag off'; }

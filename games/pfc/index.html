@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#3a1d5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>PIERRE FEUILLE CISEAUX</title>
+<style>
+  @font-face{font-family:"Luckiest";src:url(../common/fonts/LuckiestGuy-Regular.ttf) format("truetype");font-display:swap}
+  @font-face{font-family:"Nunito";src:url(../common/fonts/Nunito.ttf) format("truetype");font-weight:200 1000;font-display:swap}
+  :root{--ink:#14162b;--gold:#ffd23f;--card:#fbfaff;--muted:#6b6f91;--me:#3ec7ff;--opp:#ff6b9d;--accent:#ff7a59}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;color:var(--ink);font-family:"Nunito",system-ui,sans-serif;overscroll-behavior:none;
+    -webkit-user-select:none;user-select:none}
+  body{background:radial-gradient(ellipse at 50% 0%,#ff9a6b 0%,#c2416b 40%,#3a1d5c 100%);background-attachment:fixed;overflow:hidden}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.12;
+    background-image:radial-gradient(circle,#fff 2px,transparent 3px);background-size:26px 26px}
+  #app{position:relative;z-index:1;max-width:560px;margin:0 auto;height:100%;display:flex;flex-direction:column;
+    padding:calc(env(safe-area-inset-top) + 8px) 10px calc(env(safe-area-inset-bottom) + 8px)}
+  .hidden{display:none!important}
+  .title{font-family:"Luckiest",sans-serif;letter-spacing:1px;color:#fff;-webkit-text-stroke:3px var(--ink);paint-order:stroke fill;
+    text-shadow:0 5px 0 var(--ink)}
+  h1.title{font-size:2.5rem;margin:.1em 0 0;text-align:center;line-height:1.05}
+  h1.title span{color:var(--gold)}
+  h2{font-family:"Luckiest",sans-serif;letter-spacing:.5px;font-weight:normal;text-align:center;margin:.4em 0}
+  .screen{flex:1;display:flex;flex-direction:column;min-height:0}
+  .center{justify-content:center;gap:12px;text-align:center;padding:0 6px;overflow-y:auto}
+  .sub{color:#fff3e8;font-weight:800;margin:0}
+  .box{background:var(--card);border:3px solid var(--ink);border-radius:20px;padding:14px;box-shadow:0 6px 0 #000a;
+    display:flex;flex-direction:column;gap:10px}
+  input{font:inherit;font-size:1.15rem;font-weight:800;padding:12px;border:3px solid var(--ink);border-radius:14px;
+    background:#fff;text-align:center;width:100%;color:var(--ink);-webkit-user-select:text;user-select:text}
+  button{font:inherit;font-weight:900;cursor:pointer;border:3px solid var(--ink);border-radius:14px;background:#fff;color:var(--ink)}
+  button.big{font-family:"Luckiest",sans-serif;font-weight:normal;letter-spacing:.5px;font-size:1.35rem;padding:13px 12px 9px;
+    background:var(--gold);box-shadow:0 5px 0 var(--ink);transition:transform .08s,box-shadow .08s}
+  button.big:active:not(:disabled){transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+  #go{font-size:2rem;padding:14px 12px 8px}
+  button:disabled{opacity:.45}
+  .ghost{padding:11px;font-size:1rem;background:#ffffffd9}
+  .tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .tab{padding:11px 2px;font-size:.88rem;white-space:nowrap;box-shadow:0 4px 0 var(--ink)}
+  .tab.on{background:var(--accent);color:#fff}
+  .levels{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .levels button{padding:10px 2px;font-size:.92rem;box-shadow:0 3px 0 #0007}
+  .levels button.on{background:var(--gold);transform:translateY(-2px)}
+  .coderow{display:flex;gap:8px}
+  #code{font-family:"Luckiest",sans-serif;font-size:2.3rem;letter-spacing:.42em;padding:12px 0 6px .42em}
+  #dice{font-size:1.8rem;padding:0 14px;box-shadow:0 4px 0 var(--ink)}
+  .small{font-size:.86rem;color:var(--muted);font-weight:700;margin:0}
+  .err{background:#ffe3e0;border:2px solid #e53935;border-radius:12px;padding:9px;font-weight:900;color:#b71c1c}
+  .bigcode{font-family:"Luckiest",sans-serif;font-size:4rem;letter-spacing:.22em;background:#fff;border:3px dashed var(--ink);
+    border-radius:18px;padding:16px 0 8px .22em}
+  .heroes{display:flex;justify-content:center;gap:10px;font-size:3.4rem;line-height:1;height:70px;align-items:flex-end}
+  .heroes span{display:inline-block;animation:hop 1.2s ease-in-out infinite;filter:drop-shadow(0 4px 0 #0005)}
+  .heroes span:nth-child(2){animation-delay:-.4s} .heroes span:nth-child(3){animation-delay:-.8s}
+  @keyframes hop{50%{transform:translateY(-12px) rotate(-8deg)}}
+
+  /* ---------- Jeu ---------- */
+  header{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px}
+  header button{padding:5px 10px;font-size:1rem;box-shadow:0 3px 0 #000a;white-space:nowrap;flex-shrink:0}
+  .score{font-family:"Luckiest",sans-serif;font-size:1.1rem;background:#fff;border:2px solid var(--ink);border-radius:10px;padding:5px 10px 1px;
+    flex:1;min-width:0;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #arena{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;padding:4px 0}
+  .side{display:flex;flex-direction:column;align-items:center;gap:4px;position:relative}
+  .who{display:flex;align-items:center;gap:8px;background:#ffffffeb;border:3px solid var(--ink);border-radius:999px;padding:3px 12px 3px 6px;
+    box-shadow:0 3px 0 #000a;max-width:96%}
+  .who .nm{font-weight:1000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:42vw}
+  .who .stars{font-size:1.1rem;letter-spacing:1px;white-space:nowrap}
+  .who .st{display:inline-block;filter:grayscale(1) opacity(.35);transition:filter .3s,transform .3s}
+  .who .st.on{filter:none;animation:starpop .5s}
+  @keyframes starpop{40%{transform:scale(1.8) rotate(20deg)}}
+  .status{font-weight:900;font-size:.85rem;color:#fff;text-shadow:0 2px 0 #0008;min-height:1.2em}
+  .pad{position:relative;width:min(40vw,190px);aspect-ratio:1;border-radius:50%;border:4px solid var(--ink);
+    box-shadow:0 7px 0 #0009, inset 0 -10px 0 #0002, inset 0 8px 0 #fff5;display:flex;align-items:center;justify-content:center;
+    transition:transform .3s, filter .3s}
+  #pad-opp{background:radial-gradient(circle at 35% 30%,#ffd0e0,var(--opp))}
+  #pad-me{background:radial-gradient(circle at 35% 30%,#d2f3ff,var(--me))}
+  .hand{font-size:min(23vw,108px);line-height:1;display:inline-block;filter:drop-shadow(0 6px 0 #0004);transition:transform .2s}
+  #hand-opp{transform:rotate(180deg)}
+  .pad.win{transform:scale(1.12);filter:drop-shadow(0 0 18px #ffe066)}
+  .pad.lose{filter:grayscale(.85) brightness(.85)}
+  .pad .think{position:absolute;bottom:-6px;right:-6px;font-size:1.6rem;background:#fff;border:3px solid var(--ink);border-radius:50%;
+    width:44px;height:44px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 0 #0007}
+  #mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:76px;text-align:center}
+  #call{font-family:"Luckiest",sans-serif;font-size:2.2rem;color:#fff;-webkit-text-stroke:2.5px var(--ink);paint-order:stroke fill;
+    text-shadow:0 4px 0 var(--ink);line-height:1}
+  #why{font-weight:1000;color:#fff;text-shadow:0 2px 0 #000a;font-size:1rem;min-height:1.3em}
+  #choices{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+  .choice{display:flex;flex-direction:column;align-items:center;gap:0;padding:8px 2px 6px;border-radius:18px;background:#fff;
+    box-shadow:0 5px 0 var(--ink);transition:transform .12s, box-shadow .12s, background .15s}
+  .choice .e{font-size:2.8rem;line-height:1.1}
+  .choice b{font-family:"Luckiest",sans-serif;font-weight:normal;font-size:1rem;letter-spacing:.3px}
+  .choice:active:not(:disabled){transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+  .choice.on{background:var(--gold);transform:translateY(-4px)}
+  #taunts{display:flex;justify-content:center;gap:7px;margin-top:8px}
+  #taunts button{font-size:1.25rem;padding:2px 9px;border-radius:99px;border-width:2px;background:#ffffffd9}
+  .floaty{position:fixed;font-size:3rem;pointer-events:none;animation:floaty 1.8s ease-out forwards;z-index:50}
+  @keyframes floaty{0%{transform:translateY(0) scale(.4);opacity:0}15%{opacity:1;transform:translateY(-20px) scale(1.3)}
+    100%{transform:translateY(-220px) scale(1);opacity:0}}
+  .burst{position:fixed;pointer-events:none;z-index:40;font-size:1.4rem}
+
+  .overlay{position:fixed;inset:0;background:#0b0c1ccc;display:flex;align-items:center;justify-content:center;padding:18px;z-index:60}
+  .modal{background:var(--card);border:3px solid var(--ink);border-radius:22px;padding:18px;max-width:440px;width:100%;
+    box-shadow:0 7px 0 #000;max-height:88vh;overflow:auto}
+  .rules li{line-height:1.4;font-weight:700;margin:5px 0}
+  .result-emoji{font-size:5rem;text-align:center;line-height:1.1}
+  .confetti{position:fixed;top:-20px;font-size:1.6rem;animation:fall linear forwards;z-index:65;pointer-events:none}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+  .shake{animation:shake .45s}
+  @keyframes shake{20%{transform:translate(-8px,3px) rotate(-3deg)}40%{transform:translate(7px,-4px) rotate(3deg)}60%{transform:translate(-5px,2px)}80%{transform:translate(4px,-2px)}}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Menu -->
+  <section id="s-lobby" class="screen center">
+    <div class="heroes"><span>✊</span><span>✋</span><span>✌️</span></div>
+    <h1 class="title">PIERRE <span>FEUILLE</span> CISEAUX</h1>
+    <p class="sub">Choisis en secret… et que le plus malin gagne !</p>
+    <div class="box">
+      <input id="name" maxlength="14" placeholder="Ton pseudo" autocomplete="off">
+      <div class="tabs">
+        <button id="tab-create" class="tab on">⚔️ Créer</button>
+        <button id="tab-join" class="tab">🔑 Rejoindre</button>
+        <button id="tab-bot" class="tab">🤖 Ordi</button>
+      </div>
+      <p class="small" id="code-help">Choisis un code à 4 chiffres et donne-le à ton adversaire.</p>
+      <div class="coderow" id="coderow">
+        <input id="code" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="····" autocomplete="off">
+        <button id="dice" aria-label="Code au hasard">🎲</button>
+      </div>
+      <div class="levels hidden" id="levels">
+        <button data-l="facile">😄 Facile</button><button data-l="moyen">🤔 Moyen</button><button data-l="difficile">🧠 Difficile</button>
+      </div>
+      <div id="lobby-err" class="err hidden"></div>
+      <button id="go" class="big">START</button>
+    </div>
+    <button class="ghost" onclick="WG.home()">🏠 Retour aux jeux</button>
+  </section>
+
+  <!-- Attente -->
+  <section id="s-wait" class="screen center hidden">
+    <h2 class="title" style="font-size:1.8rem">En attente de ton adversaire…</h2>
+    <div class="box">
+      <p style="margin:0;font-weight:900">Donne-lui ce code :</p>
+      <div id="bigcode" class="bigcode">····</div>
+      <p class="small">Il ou elle choisit « Rejoindre » et tape ce code.</p>
+    </div>
+    <button id="share" class="ghost">🔗 Ou envoyer un lien direct</button>
+    <button id="cancel" class="ghost">✖ Annuler</button>
+  </section>
+
+  <!-- Jeu -->
+  <section id="s-game" class="screen hidden">
+    <header>
+      <button id="quit" aria-label="Quitter">🏠</button>
+      <span class="score" id="score">0 – 0</span>
+      <button id="rulesBtn">? Règles</button>
+    </header>
+    <div id="arena">
+      <div class="side">
+        <div class="who"><span class="nm" id="nm-opp">…</span><span class="stars" id="st-opp"></span></div>
+        <div class="pad" id="pad-opp"><span class="hand" id="hand-opp">✊</span><span class="think hidden" id="think-opp">💭</span></div>
+        <div class="status" id="status-opp"></div>
+      </div>
+      <div id="mid"><div id="call">Manche 1</div><div id="why"></div></div>
+      <div class="side">
+        <div class="status" id="status-me"></div>
+        <div class="pad" id="pad-me"><span class="hand" id="hand-me">✊</span></div>
+        <div class="who"><span class="nm" id="nm-me">…</span><span class="stars" id="st-me"></span></div>
+      </div>
+    </div>
+    <div id="choices">
+      <button class="choice" data-m="pierre"><span class="e">✊</span><b>Pierre</b></button>
+      <button class="choice" data-m="feuille"><span class="e">✋</span><b>Feuille</b></button>
+      <button class="choice" data-m="ciseaux"><span class="e">✌️</span><b>Ciseaux</b></button>
+    </div>
+    <div id="taunts"></div>
+  </section>
+</div>
+
+<!-- Fin -->
+<div id="over" class="overlay hidden">
+  <div class="modal" style="text-align:center">
+    <div class="result-emoji" id="over-emoji">🏆</div>
+    <h2 class="title" id="over-title" style="font-size:2.2rem">Victoire !</h2>
+    <p id="over-text" style="font-weight:800"></p>
+    <button class="big" id="rematchBtn" style="width:100%">Revanche !</button>
+    <p class="small" id="rematchInfo" style="margin-top:8px"></p>
+  </div>
+</div>
+
+<!-- Règles -->
+<div id="rules" class="overlay hidden">
+  <div class="modal rules">
+    <h2 style="margin-top:0">✊ Règles</h2>
+    <ul>
+      <li>Chacun choisit <b>en secret</b> : ✊ <b>Pierre</b>, ✋ <b>Feuille</b> ou ✌️ <b>Ciseaux</b>.</li>
+      <li>Quand les deux ont choisi : « Pierre… Feuille… Ciseaux ! » et on révèle en même temps.</li>
+      <li>✊ La pierre <b>casse</b> les ciseaux. ✌️ Les ciseaux <b>coupent</b> la feuille. ✋ La feuille <b>enveloppe</b> la pierre.</li>
+      <li>Même main des deux côtés : égalité, on rejoue.</li>
+      <li>Le premier à <b>3 points ⭐</b> gagne la partie.</li>
+      <li>Contre l'ordi : il ne voit jamais ton choix… mais le Robot Génie essaie de deviner tes habitudes !</li>
+    </ul>
+    <button class="big" style="width:100%;margin-top:6px" onclick="hide('rules')">Compris !</button>
+  </div>
+</div>
+
+<script src="../common/client.js"></script>
+<script src="../common/sound.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const show = id => $(id).classList.remove('hidden');
+const hide = id => $(id).classList.add('hidden');
+const esc = WG.esc;
+const HAND = {pierre:'✊', feuille:'✋', ciseaux:'✌️'};
+const NAME = {pierre:'Pierre', feuille:'Feuille', ciseaux:'Ciseaux'};
+const WHY = {pierre:'La pierre casse les ciseaux', ciseaux:'Les ciseaux coupent la feuille', feuille:'La feuille enveloppe la pierre'};
+const TAUNTS = ['😂', '😎', '🤔', '😱', '👏', '😘'];
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+let S = null, you = 0, mode = 'create', curGame = null, seenSeq = -1, animating = false, pending = null;
+
+// ================= Menu =================
+function setMode(m){
+  mode = m;
+  ['create', 'join', 'bot'].forEach(k => $('tab-' + k).classList.toggle('on', m === k));
+  $('code-help').textContent = m === 'create' ? 'Choisis un code à 4 chiffres et donne-le à ton adversaire.'
+    : m === 'join' ? 'Tape le code que ton adversaire t\'a donné.' : 'Joue contre un robot. Choisis son niveau :';
+  $('dice').classList.toggle('hidden', m !== 'create');
+  $('coderow').classList.toggle('hidden', m === 'bot');
+  $('levels').classList.toggle('hidden', m !== 'bot');
+  hide('lobby-err');
+}
+let botLevel = WG.store('wg_pfc_level') || 'moyen';
+function showLevel(){ document.querySelectorAll('#levels button').forEach(b => b.classList.toggle('on', b.dataset.l === botLevel)); }
+document.querySelectorAll('#levels button').forEach(b => b.onclick = () => { botLevel = b.dataset.l; WG.store('wg_pfc_level', botLevel); showLevel(); SFX.play('select'); });
+showLevel();
+function lobbyError(msg){ $('lobby-err').textContent = msg; show('lobby-err'); }
+function showScreen(id){ ['s-lobby','s-wait','s-game'].forEach(s => s === id ? show(s) : hide(s)); }
+function showLobby(msg){ hide('over'); hide('rules'); showScreen('s-lobby'); $('go').disabled = false; $('go').textContent = 'START'; setMode(mode); if(msg) lobbyError(msg); }
+function start(code, m){
+  S = null; curGame = null; seenSeq = -1; animating = false; pending = null;
+  $('over').dataset.key = '';
+  $('bigcode').textContent = code || '····';
+  $('go').disabled = true; $('go').textContent = 'Connexion…';
+  WG.connect({ game: 'pfc', room: code, mode: m, level: botLevel, onState, onTaunt: e => { floaty(e, true); SFX.play('pop'); }, onError: msg => showLobby(msg) });
+}
+$('name').value = WG.name();
+$('tab-create').onclick = () => setMode('create');
+$('tab-join').onclick = () => { setMode('join'); $('code').value = ''; $('code').focus(); };
+$('tab-bot').onclick = () => setMode('bot');
+$('dice').onclick = () => { $('code').value = WG.randomCode(); hide('lobby-err'); };
+$('code').addEventListener('input', () => { $('code').value = $('code').value.replace(/\D/g, '').slice(0, 4); hide('lobby-err'); });
+$('code').addEventListener('keydown', e => { if(e.key === 'Enter') $('go').click(); });
+$('go').onclick = () => {
+  const n = $('name').value.trim(), c = $('code').value;
+  if(!n) return lobbyError('Choisis d\'abord un pseudo');
+  if(mode === 'bot'){ WG.setName(n); return start(null, 'bot'); }
+  if(!/^\d{4}$/.test(c)) return lobbyError('Le code doit faire 4 chiffres');
+  WG.setName(n); start(c, mode);
+};
+$('cancel').onclick = () => { WG.leave(); showLobby(); };
+$('quit').onclick = () => { if(confirm('Quitter la partie ?')){ WG.leave(); showLobby(); } };
+$('share').onclick = () => WG.share($('share'), 'Pierre-Feuille-Ciseaux ✊');
+$('rulesBtn').onclick = () => show('rules');
+$('rematchBtn').onclick = () => { WG.send({type:'rematch'}); $('rematchBtn').disabled = true; };
+document.querySelectorAll('.choice').forEach(b => b.onclick = () => {
+  if(!S || animating || S.winner !== null || !S.connected[1 - you]) return;
+  WG.send({type:'choose', move: b.dataset.m}); SFX.play('select'); WG.vibrate(15);
+  S.mine = b.dataset.m; render();   // affichage immédiat, confirmé par le serveur
+});
+
+// ================= Réception =================
+function onState(st){
+  $('go').disabled = false;
+  you = st.you;
+  if(!st.names[1 - you]){ S = st; hide('over'); showScreen('s-wait'); return; }
+  showScreen('s-game');
+  if(st.gameNo !== curGame){
+    curGame = st.gameNo; seenSeq = st.seq; animating = false; pending = null; S = st;
+    $('over').dataset.key = ''; hide('over');
+    resetPads(); $('call').textContent = 'Manche ' + st.round; $('why').textContent = 'Choisis ta main !';
+    render(); return;
+  }
+  if(st.seq > seenSeq){
+    if(animating){ pending = st; return; }
+    seenSeq = st.seq; const prev = S; S = st;
+    reveal(st).then(() => { render(); if(pending){ const p = pending; pending = null; onState(p); } });
+    return;
+  }
+  if(animating){ pending = st; return; }
+  S = st; render();
+}
+
+// ================= Affichage =================
+function stars(n, target){ let s = ''; for(let i = 0; i < target; i++) s += `<span class="st${i < n ? ' on' : ''}">⭐</span>`; return s; }
+function resetPads(){
+  ['me', 'opp'].forEach(k => { $('pad-' + k).classList.remove('win', 'lose'); $('hand-' + k).textContent = '✊'; });
+}
+function render(){
+  if(!S) return;
+  const opp = 1 - you;
+  WG.score(S.names, S.score, you);
+  $('nm-me').textContent = S.names[you] + ' (toi)';
+  $('nm-opp').textContent = S.names[opp] + (S.connected[opp] ? '' : ' 📴');
+  $('st-me').innerHTML = stars(S.points[you], S.target);
+  $('st-opp').innerHTML = stars(S.points[opp], S.target);
+  if(animating) return;
+  const over = S.winner !== null;
+  document.querySelectorAll('.choice').forEach(b => { b.classList.toggle('on', S.mine === b.dataset.m); b.disabled = over || !S.connected[opp]; });
+  $('think-opp').classList.toggle('hidden', over || S.chosen[opp]);
+  $('status-opp').textContent = over ? '' : !S.connected[opp] ? 'Déconnecté… on l\'attend' : S.chosen[opp] ? '✅ a choisi !' : 'réfléchit…';
+  $('status-me').textContent = over ? '' : S.mine ? `Tu as choisi ${NAME[S.mine]} — tu peux encore changer` : '';
+  if(!over && S.mine && !S.chosen[opp]) $('why').textContent = `En attente de ${S.names[opp]}…`;
+  else if(!over && !S.mine && S.chosen[opp]) $('why').textContent = `${S.names[opp]} a choisi… à toi !`;
+  if(over) showOver();
+}
+
+// « Pierre… Feuille… Ciseaux ! » puis on révèle
+async function reveal(st){
+  animating = true;
+  const L = st.last, opp = 1 - you, mineMv = L.moves[you], oppMv = L.moves[opp];
+  document.querySelectorAll('.choice').forEach(b => b.disabled = true);
+  hide('think-opp'); $('status-opp').textContent = ''; $('status-me').textContent = '';
+  resetPads(); $('why').textContent = '';
+  const hm = $('hand-me'), ho = $('hand-opp');
+  for(const word of ['Pierre…', 'Feuille…', 'Ciseaux !']){
+    $('call').textContent = word; SFX.play('beep');
+    hm.animate([{transform:'translateY(0)'}, {transform:'translateY(-34px) rotate(-10deg)'}, {transform:'translateY(0)'}], {duration: 330, easing:'ease-in-out'});
+    ho.animate([{transform:'rotate(180deg) translateY(0)'}, {transform:'rotate(180deg) translateY(-34px) rotate(-10deg)'}, {transform:'rotate(180deg) translateY(0)'}], {duration: 330, easing:'ease-in-out'});
+    await wait(380);
+  }
+  hm.textContent = HAND[mineMv]; ho.textContent = HAND[oppMv];
+  SFX.play('pop'); WG.vibrate(20);
+  for(const [el, base] of [[hm, ''], [ho, 'rotate(180deg) ']])
+    el.animate([{transform: base + 'scale(.3)'}, {transform: base + 'scale(1.35)'}, {transform: base + 'scale(1)'}], {duration: 380, easing:'cubic-bezier(.2,1.6,.4,1)'});
+  await wait(450);
+  if(L.winner === 'draw'){
+    $('call').textContent = 'Égalité !'; $('why').textContent = `${NAME[mineMv]} contre ${NAME[mineMv]} : on rejoue !`;
+    SFX.play('miss');
+    ['pad-me', 'pad-opp'].forEach(id => { $(id).classList.remove('shake'); void $(id).offsetWidth; $(id).classList.add('shake'); });
+  } else {
+    const iWin = L.winner === you, wMv = L.moves[L.winner];
+    $('call').textContent = iWin ? 'Gagné !' : 'Perdu !';
+    $('why').textContent = WHY[wMv] + (iWin ? ' 👍' : '');
+    $(iWin ? 'pad-me' : 'pad-opp').classList.add('win');
+    const loser = $(iWin ? 'pad-opp' : 'pad-me'); loser.classList.add('lose'); loser.classList.remove('shake'); void loser.offsetWidth; loser.classList.add('shake');
+    burst($(iWin ? 'pad-me' : 'pad-opp'), ['⭐', '✨', '💥']);
+    SFX.play(iWin ? 'coin' : 'bonk'); if(!iWin) WG.vibrate(60);
+    render();   // les étoiles s'allument
+  }
+  await wait(1400);
+  if(st.winner === null){
+    resetPads(); $('call').textContent = 'Manche ' + st.round; $('why').textContent = 'Choisis ta main !';
+    S.mine = null;
+  }
+  animating = false;
+}
+function burst(el, emo){
+  const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+  for(let i = 0; i < 12; i++){
+    const d = document.createElement('div'); d.className = 'burst'; d.textContent = emo[i % emo.length];
+    d.style.left = x + 'px'; d.style.top = y + 'px'; document.body.appendChild(d);
+    const a = Math.random() * 6.28, dist = 70 + Math.random() * 70;
+    d.animate([{transform:'translate(-50%,-50%) scale(.5)', opacity:1}, {transform:`translate(calc(-50% + ${Math.cos(a) * dist}px), calc(-50% + ${Math.sin(a) * dist}px)) scale(1.2)`, opacity:0}],
+      {duration: 700 + Math.random() * 300, easing:'cubic-bezier(.2,.8,.3,1)'}).onfinish = () => d.remove();
+  }
+}
+
+// ================= Fin =================
+function showOver(){
+  const key = S.gameNo + ':' + S.seq;
+  updateRematch();
+  if($('over').dataset.key === key) return;
+  $('over').dataset.key = key;
+  const opp = 1 - you, w = S.winner;
+  setTimeout(() => {
+    if(!S || S.winner === null || S.gameNo + ':' + S.seq !== key) return;
+    if(w === you){
+      $('over-emoji').textContent = '🏆'; $('over-title').textContent = 'Victoire !';
+      $('over-text').textContent = `${S.points[you]} à ${S.points[opp]} contre ${S.names[opp]} en ${S.history.length} manches. Bien joué !`;
+      confetti(); SFX.play('win');
+    } else {
+      $('over-emoji').textContent = '😵'; $('over-title').textContent = 'Perdu !';
+      $('over-text').textContent = `${S.names[opp]} gagne ${S.points[opp]} à ${S.points[you]}. Revanche ?`;
+      SFX.play('lose');
+    }
+    show('over');
+  }, 600);
+}
+function updateRematch(){
+  const opp = 1 - you;
+  $('rematchInfo').textContent = S.rematch[you] ? `En attente de ${S.names[opp]}…` : (S.rematch[opp] ? `${S.names[opp]} veut sa revanche !` : '');
+  $('rematchBtn').disabled = !!S.rematch[you];
+}
+function confetti(){
+  const e = ['🎉', '⭐', '✊', '✋', '✌️'];
+  for(let i = 0; i < 32; i++){
+    const d = document.createElement('div'); d.className = 'confetti'; d.textContent = e[i % e.length];
+    d.style.left = Math.random() * 100 + 'vw';
+    d.style.animationDuration = (1.8 + Math.random() * 1.8) + 's';
+    d.style.animationDelay = Math.random() * .6 + 's';
+    document.body.appendChild(d); setTimeout(() => d.remove(), 4500);
+  }
+}
+
+// ================= Provocations =================
+let lastTaunt = 0;
+TAUNTS.forEach(e => {
+  const b = document.createElement('button'); b.textContent = e;
+  b.onclick = () => { const t = Date.now(); if(t - lastTaunt < 800) return; lastTaunt = t; WG.send({type:'taunt', e}); floaty(e, false); SFX.play('pop'); };
+  $('taunts').appendChild(b);
+});
+function floaty(e, fromOpp){
+  const anchor = $(fromOpp ? 'pad-opp' : 'pad-me').getBoundingClientRect();
+  const d = document.createElement('div'); d.className = 'floaty'; d.textContent = e;
+  d.style.left = (anchor.left + anchor.width / 2 - 24) + 'px';
+  d.style.top = (anchor.top + anchor.height / 3) + 'px';
+  document.body.appendChild(d); setTimeout(() => d.remove(), 1900);
+}
+
+// ================= Démarrage =================
+setMode('create');
+const linkRoom = WG.urlRoom();
+if(linkRoom && WG.name()) start(linkRoom);
+else if(linkRoom){ setMode('join'); $('code').value = linkRoom; }
+</script>
+</body>
+</html>

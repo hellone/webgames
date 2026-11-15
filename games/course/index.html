@@ -856,7 +856,7 @@ function onState(st){
   }
   if($('s-game').classList.contains('hidden')) showScreen('s-game');
   if(st.gameNo !== curGame){ curGame = st.gameNo; $('over').dataset.key = ''; hide('over'); setupRace(st); }
-  $('score').textContent = `Toi ${st.score[you]} – ${st.score[opp]}`;
+  WG.score(st.names, st.score, you);
   if(st.phase === 'over' && R){
     if(!R.frozen){ R.frozen = true; if(st.winner !== you) addFx(`${st.names[opp]} a gagné !`, '#fff', 30); }
     showOver();
