@@ -79,8 +79,8 @@
   #timer{font-family:"Luckiest",sans-serif;color:#fff;-webkit-text-stroke:2px var(--ink);paint-order:stroke fill;font-size:1.25rem;padding-top:3px}
   #stage{position:relative;flex:1;min-height:0;touch-action:none;display:flex;align-items:center;justify-content:center}
   #cv{display:block;touch-action:none}
-  #pad{display:grid;grid-template-columns:repeat(3,1fr);grid-template-areas:". u ." "l d r";gap:8px;margin-top:8px;touch-action:none}
-  #pad button{height:62px;font-size:2.4rem;border-radius:20px;box-shadow:0 5px 0 var(--ink);padding:0;display:flex;align-items:center;justify-content:center;gap:8px;
+  #pad{display:grid;grid-template-columns:1fr 1.15fr 1fr;grid-template-rows:76px 76px;grid-template-areas:"l u r" "l d r";gap:8px;margin-top:8px;touch-action:none}
+  #pad button{height:100%;font-size:2.8rem;border-radius:20px;box-shadow:0 5px 0 var(--ink);padding:0;display:flex;align-items:center;justify-content:center;gap:8px;
     font-family:"Luckiest",sans-serif;font-weight:normal;
     transition:transform .06s,box-shadow .06s;touch-action:none}
   #pad button.press{transform:translateY(4px);box-shadow:0 1px 0 var(--ink);filter:brightness(1.1)}
