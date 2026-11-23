@@ -79,13 +79,12 @@
   #timer{font-family:"Luckiest",sans-serif;color:#fff;-webkit-text-stroke:2px var(--ink);paint-order:stroke fill;font-size:1.25rem;padding-top:3px}
   #stage{position:relative;flex:1;min-height:0;touch-action:none;display:flex;align-items:center;justify-content:center}
   #cv{display:block;touch-action:none}
-  #pad{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;touch-action:none}
-  #pad button{height:84px;font-size:2.6rem;border-radius:20px;box-shadow:0 5px 0 var(--ink);padding:0;display:flex;align-items:center;justify-content:center;gap:8px;
+  #pad{display:grid;grid-template-columns:repeat(3,1fr);grid-template-areas:". u ." "l d r";gap:8px;margin-top:8px;touch-action:none}
+  #pad button{height:62px;font-size:2.4rem;border-radius:20px;box-shadow:0 5px 0 var(--ink);padding:0;display:flex;align-items:center;justify-content:center;gap:8px;
     font-family:"Luckiest",sans-serif;font-weight:normal;
     transition:transform .06s,box-shadow .06s;touch-action:none}
   #pad button.press{transform:translateY(4px);box-shadow:0 1px 0 var(--ink);filter:brightness(1.1)}
-  #pad small{font-size:1.15rem;letter-spacing:.3px}
-  #bL{background:#7cc6ff} #bR{background:#ffb36b}
+  #bU{grid-area:u;background:#9be38f} #bL{grid-area:l;background:#7cc6ff} #bD{grid-area:d;background:#ffe27a} #bR{grid-area:r;background:#ffb36b}
   
 
   .overlay{position:fixed;inset:0;background:#0b0c1ccc;display:flex;align-items:center;justify-content:center;padding:18px;z-index:60}
@@ -161,8 +160,10 @@
     </div>
     <div id="stage"><canvas id="cv"></canvas></div>
     <div id="pad">
-      <button id="bL" aria-label="Tourner à gauche">↺<small>Gauche</small></button>
-      <button id="bR" aria-label="Tourner à droite"><small>Droite</small>↻</button>
+      <button id="bU" aria-label="Haut">▲</button>
+      <button id="bL" aria-label="Gauche">◀</button>
+      <button id="bD" aria-label="Bas">▼</button>
+      <button id="bR" aria-label="Droite">▶</button>
     </div>
   </section>
 </div>
@@ -189,7 +190,7 @@
       <li>Au bout de <b>2 minutes</b>, le serpent le plus long gagne.</li>
       <li>🐢 <b>Facile</b> : lent, et on traverse les murs pour ressortir de l'autre côté. 🐍 <b>Normal</b> : plus rapide, murs mortels. 🔥 <b>Expert</b> : très rapide, des rochers, et ça accélère à chaque pomme.</li>
       <li>🎯 <b>Solo</b> : le Snake classique, tout seul. Mange un max de pommes sans te cogner, ça accélère à chaque pomme. Ton record est gardé pour chaque difficulté.</li>
-      <li>Pour tourner : les 2 gros boutons <b>↺ Gauche</b> et <b>Droite ↻</b> font tourner le serpent par rapport à sa tête (les petites flèches bleue et orange autour de ta tête montrent où il va aller). Tu peux aussi glisser le doigt sur le terrain dans la direction voulue, ou utiliser les flèches du clavier.</li>
+      <li>Pour diriger : les 4 boutons <b>▲ haut</b>, <b>▼ bas</b>, <b>◀ gauche</b> et <b>▶ droite</b> envoient le serpent dans cette direction sur l'écran (pas de demi-tour). Tu peux aussi glisser le doigt sur le terrain dans la direction voulue, ou utiliser les flèches du clavier.</li>
     </ul>
     <button class="big" style="width:100%;margin-top:6px" onclick="hide('rules')">Compris !</button>
   </div>
@@ -372,13 +373,13 @@ function turnRel(side){
   if(S.solo) soloTurn(side); else WG.send({type:'turn', side});
   SFX.play('tap', {v: .6}); WG.vibrate(8);
 }
-function bindBtn(id, side){
+function bindBtn(id, d){
   const b = $(id);
-  b.addEventListener('pointerdown', e => { e.preventDefault(); b.classList.add('press'); turnRel(side); });
+  b.addEventListener('pointerdown', e => { e.preventDefault(); b.classList.add('press'); turn(d); WG.vibrate(8); });
   ['pointerup','pointerleave','pointercancel'].forEach(ev => b.addEventListener(ev, () => b.classList.remove('press')));
   b.addEventListener('contextmenu', e => e.preventDefault());
 }
-bindBtn('bL', 'left'); bindBtn('bR', 'right');
+bindBtn('bU', 'up'); bindBtn('bD', 'down'); bindBtn('bL', 'left'); bindBtn('bR', 'right');
 document.addEventListener('keydown', e => {
   if($('s-game').classList.contains('hidden')) return;
   const d = {ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right', z:'up', s:'down', q:'left', d:'right'}[e.key];
@@ -596,18 +597,6 @@ function frame(now){
   if(S.phase === 'over' && S.crash) S.crash.forEach(cr => { if(!cr) return;
     const X = cx(Math.max(-.3, Math.min(S.cols - .7, cr[0]))), Y = cy(Math.max(-.3, Math.min(S.rows - .7, cr[1]))), k = 1 + Math.sin(now / 120) * .12;
     c.font = Math.round(C * 1.3 * k) + 'px ' + EMOJI_FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('💥', X, Y); });
-  // repères des boutons : bleu = tourner à gauche, orange = à droite (par rapport à la tête)
-  const me = S.snakes[you];
-  if(S.phase === 'play' && me && me.alive){
-    const pts = lerpBody(you, f), h = pts[0], d = {up:[0,-1], down:[0,1], left:[-1,0], right:[1,0]}[me.dir];
-    for(const [sg, col] of [[-1, '#7cc6ff'], [1, '#ffb36b']]){
-      const px = d[1] * -sg, py = d[0] * sg;   // gauche = (dy, -dx) ; droite = (-dy, dx)
-      const X = h.x + px * C * .95, Y = h.y + py * C * .95;
-      c.save(); c.globalAlpha = .8; c.translate(X, Y); c.rotate(Math.atan2(py, px));
-      c.fillStyle = col; c.strokeStyle = INK; c.lineWidth = 1.5;
-      c.beginPath(); c.moveTo(C * .22, 0); c.lineTo(-C * .1, -C * .16); c.lineTo(-C * .1, C * .16); c.closePath(); c.fill(); c.stroke(); c.restore();
-    }
-  }
   // particules
   parts = parts.filter(p => now - p.t0 < p.life);
   for(const p of parts){ const u = (now - p.t0) / p.life;
