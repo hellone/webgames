@@ -229,6 +229,7 @@
 
 <script src="../common/client.js"></script>
 <script src="../common/sound.js"></script>
+<script>SFX.files('../common/sfx/', { roll: ['robots/de_lance_1', 'robots/de_lance_2'], select: 'robots/de_roule', ding: 'robots/piece_clic', miss: 'robots/rien', jump: 'robots/robot_complet', punch: 'robots/piece_pose', explode: 'robots/robot_ko' });</script>
 <script>
 const $ = id => document.getElementById(id);
 const show = id => $(id).classList.remove('hidden');
@@ -439,6 +440,7 @@ let spinTimer = null, spinAnim = null;
 function rollSpin(){
   if(spinTimer) return;
   let f = Math.floor(Math.random() * 6);
+  SFX.play('roll');
   spinTimer = setInterval(() => { f = (f + 1 + Math.floor(Math.random() * 5)) % 6; drawDie(f); SFX.play('tick'); }, 75);
   spinAnim = $('die').animate([
     {transform:'translateY(0) rotate(0)'}, {transform:'translateY(-26px) rotate(180deg) scale(1.1)'},

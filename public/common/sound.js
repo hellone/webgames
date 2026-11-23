@@ -1,5 +1,9 @@
 // WebGames — brique son commune
-// Aucun fichier audio : tous les bruitages sont fabriqués par le navigateur (Web Audio), façon jeu rétro.
+// Les bruitages sont fabriqués par le navigateur (Web Audio), façon jeu rétro.
+// Un jeu peut les remplacer par de vrais fichiers (public/common/sfx/, faits avec earshot) :
+//   SFX.files('../common/sfx/', { coin: 'snake/mange_1', ding: ['snake/bonus'] });
+// Une liste = un fichier tiré au hasard à chaque fois. Tant qu'un fichier n'est pas chargé
+// (ou s'il manque), le son fabriqué d'origine est joué à la place.
 // Usage dans la page d'un jeu :
 //   <script src="../common/sound.js"></script>
 //   SFX.play('jump');            // voir la liste SOUNDS plus bas
@@ -7,6 +11,12 @@
 // Un bouton 🔊 / 🔇 est ajouté tout seul à côté du bouton 🏠 (choix retenu sur le téléphone).
 (function () {
   let ac = null, master = null, noiseBuf = null;
+  const bufs = {}; let fileBase = '', pendingFiles = null;
+  // sons communs à tous les jeux (un jeu peut les remplacer dans son propre SFX.files)
+  const COMMON = {
+    beep: 'commun/compte_bip', go: 'commun/compte_go', win: 'commun/victoire', lose: 'commun/defaite',
+    nope: 'commun/erreur', pop: 'commun/joueur_rejoint', select: 'commun/menu_tap',
+  };
   const last = {};
   let muted = false;
   try { muted = localStorage.getItem('wg_mute') === '1'; } catch (e) {}
@@ -22,6 +32,7 @@
       noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
       const d = noiseBuf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      loadFiles();
     }
     if (ac.state === 'suspended') ac.resume();
     return ac;
@@ -34,6 +45,32 @@
     s.buffer = b; s.connect(c.destination); s.start(0);
   }
   ['pointerdown', 'touchend', 'keydown'].forEach((ev) => window.addEventListener(ev, unlock, { capture: true, passive: true }));
+
+  // ---------- Vrais fichiers audio (mp3) ----------
+  function files(base, map) {
+    fileBase = base.replace(/\/?$/, '/');
+    pendingFiles = Object.assign({}, COMMON, map || {});
+    if (ac) loadFiles();
+  }
+  function loadFiles() {
+    if (!pendingFiles || !ac) return;
+    const map = pendingFiles; pendingFiles = null;
+    Object.keys(map).forEach((name) => {
+      [].concat(map[name]).forEach((f) => {
+        fetch(fileBase + f + '.mp3')
+          .then((r) => { if (!r.ok) throw new Error(f); return r.arrayBuffer(); })
+          .then((b) => new Promise((ok, ko) => ac.decodeAudioData(b, ok, ko)))
+          .then((buf) => { (bufs[name] = bufs[name] || []).push(buf); })
+          .catch(() => {}); // fichier absent : on garde le son fabriqué
+      });
+    });
+  }
+  function playFile(list, k) {
+    const s = ac.createBufferSource(), g = ac.createGain();
+    s.buffer = list[Math.floor(Math.random() * list.length)];
+    g.gain.value = 0.9 * k;
+    s.connect(g); g.connect(master); s.start();
+  }
 
   // ---------- Briques de base ----------
   // Note : fréquence f → f2 sur d secondes
@@ -114,12 +151,14 @@
 
   function play(name, opts) {
     if (muted || document.hidden) return;
-    const fn = SOUNDS[name]; if (!fn) return;
+    const fn = SOUNDS[name], file = bufs[name];
+    if (!fn && !file) return;
     const now = performance.now();
     if (last[name] && now - last[name] < 35) return; // pas deux fois le même son au même instant
     last[name] = now;
     if (!ctx() || ac.state !== 'running') return;
-    try { fn((opts && opts.v) || 1); } catch (e) {}
+    const k = (opts && opts.v) || 1;
+    try { if (file && file.length) playFile(file, k); else if (fn) fn(k); } catch (e) {}
   }
 
   // ---------- Bouton 🔊 / 🔇 ----------
@@ -144,5 +183,5 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addButtons); else addButtons();
 
-  window.SFX = { play, isMuted: () => muted, setMuted, list: () => Object.keys(SOUNDS) };
+  window.SFX = { play, files, isMuted: () => muted, setMuted, list: () => Object.keys(SOUNDS) };
 })();

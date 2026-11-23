@@ -1,0 +1,3 @@
+Bruitages des mini-jeux, générés avec earshot (https://github.com/Leonxlnx/earshot, licence MIT) le 23/11/2026.
+Sons recalculés par code (une partie à partir d'enregistrements du domaine public) : libres d'usage.
+Un dossier par jeu + commun/. Ils sont branchés dans chaque page par SFX.files(...) (voir public/common/sound.js).
